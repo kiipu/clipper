@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import { ClipPayload, SaveBehavior, SaveResult, SaveTarget, Template, Property, PromptVariable } from '../types/types';
 import { incrementStat, getClipHistory } from '../utils/storage-utils';
-import { generateFrontmatter, saveToObsidian } from '../utils/obsidian-note-creator';
+import { generateFrontmatter } from '../utils/obsidian-note-creator';
 import { extractPageContent, initializePageContent } from '../utils/content-extractor';
 import { compileTemplate } from '../utils/template-compiler';
 import { initializeIcons, getPropertyTypeIcon } from '../icons/icons';
@@ -35,7 +35,6 @@ let currentTemplate: Template | null = null;
 let templates: Template[] = [];
 let currentVariables: { [key: string]: string } = {};
 let currentTabId: number | undefined;
-let lastSelectedVault: string | null = null;
 
 const isSidePanel = window.location.pathname.includes('side-panel.html');
 const urlParams = new URLSearchParams(window.location.search);
@@ -107,7 +106,6 @@ async function buildClipPayloadFromCurrentPage(): Promise<ClipPayload & { select
 		throw new Error('No active template');
 	}
 
-	const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement;
 	const noteContentField = document.getElementById('note-content-field') as HTMLTextAreaElement;
 	const noteNameField = document.getElementById('note-name-field') as HTMLInputElement;
 	const pathField = document.getElementById('path-name-field') as HTMLInputElement;
@@ -132,7 +130,6 @@ async function buildClipPayloadFromCurrentPage(): Promise<ClipPayload & { select
 	const fullContent = frontmatter + noteContent;
 	const tabInfo = await getCurrentTabInfo();
 	const isDailyNote = currentTemplate.behavior === 'append-daily' || currentTemplate.behavior === 'prepend-daily';
-	const selectedVault = currentTemplate.vault || vaultDropdown?.value || '';
 
 	return {
 		title: isDailyNote ? (tabInfo.title || currentVariables.title || 'Untitled') : (noteNameField?.value || tabInfo.title || 'Untitled'),
@@ -142,7 +139,7 @@ async function buildClipPayloadFromCurrentPage(): Promise<ClipPayload & { select
 		content: noteContent,
 		fullContent,
 		path: isDailyNote ? '' : (pathField?.value || ''),
-		vault: selectedVault,
+		vault: '',
 		tags: collectClipTags(properties),
 		createdAt: new Date().toISOString(),
 		templateId: currentTemplate.id,
@@ -158,7 +155,7 @@ async function buildClipPayloadFromCurrentPage(): Promise<ClipPayload & { select
 			wordCount: currentVariables.wordCount,
 			domain: currentVariables.domain
 		},
-		selectedVault
+		selectedVault: ''
 	};
 }
 
@@ -170,29 +167,9 @@ async function saveWithTarget(target: SaveTarget, payload: ClipPayload & { selec
 		case 'file':
 			await saveClipToDownloads(payload);
 			return;
-		case 'obsidian':
-			await saveClipToObsidian(payload);
-			return;
 		case 'kiipu':
 			await saveClipToKiipu(payload);
 			return;
-	}
-}
-
-async function saveClipToObsidian(payload: ClipPayload & { selectedVault: string }): Promise<void> {
-	if (!currentTemplate) return;
-
-	await saveToObsidian(payload.fullContent, payload.title, payload.path, payload.selectedVault, currentTemplate.behavior);
-	const tabInfo = await getCurrentTabInfo();
-	await incrementStat('addToObsidian', payload.selectedVault, payload.path, tabInfo.url, tabInfo.title);
-
-	if (!currentTemplate.vault) {
-		lastSelectedVault = payload.selectedVault;
-		await setLocalStorage('lastSelectedVault', lastSelectedVault);
-	}
-
-	if (!isSidePanel) {
-		setTimeout(() => window.close(), 500);
 	}
 }
 
@@ -359,15 +336,6 @@ async function initializeExtension(tabId: number) {
 		currentTemplate = templates[0];
 		debugLog('Templates', 'Current template set to:', currentTemplate);
 
-		// Load last selected vault
-		lastSelectedVault = await getLocalStorage('lastSelectedVault');
-		if (!lastSelectedVault && loadedSettings.vaults.length > 0) {
-			lastSelectedVault = loadedSettings.vaults[0];
-		}
-		debugLog('Vaults', 'Last selected vault:', lastSelectedVault);
-
-		updateVaultDropdown(loadedSettings.vaults);
-
 		const tab = await getTabInfo(tabId);
 		if (!tab.url || isBlankPage(tab.url)) {
 			showError('pageCannotBeClipped');
@@ -394,10 +362,10 @@ async function initializeExtension(tabId: number) {
 function setupMessageListeners() {
 	browser.runtime.onMessage.addListener((request: any, sender: browser.Runtime.MessageSender, sendResponse: (response?: any) => void) => {
 		if (request.action === "triggerQuickClip") {
-			handleClipObsidian().then(() => {
+			handlePrimaryAction().then(() => {
 				sendResponse({success: true});
 			}).catch((error) => {
-				console.error('Error in handleClipObsidian:', error);
+				console.error('Error in handlePrimaryAction:', error);
 				sendResponse({success: false, error: error.message});
 			});
 			return true;
@@ -510,7 +478,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 			try {
 				// DOM-dependent initializations
-				updateVaultDropdown(loadedSettings.vaults);
 				populateTemplateDropdown();
 				setupEventListeners(currentTabId);
 				await initializeUI();
@@ -646,14 +613,12 @@ function setupEventListeners(tabId: number) {
 
 						if (navigator.canShare(shareData)) {
 							const pathField = document.getElementById('path-name-field') as HTMLInputElement;
-							const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement;
 							const path = pathField?.value || '';
-							const vault = vaultDropdown?.value || '';
 
 							navigator.share(shareData)
 								.then(async () => {
 									const tabInfo = await getCurrentTabInfo();
-									await incrementStat('share', vault, path, tabInfo.url, tabInfo.title);
+									await incrementStat('share', '', path, tabInfo.url, tabInfo.title);
 									const moreDropdown = document.getElementById('more-dropdown');
 									if (moreDropdown) {
 											moreDropdown.classList.remove('show');
@@ -700,6 +665,11 @@ function setupEventListeners(tabId: number) {
 	if (readerModeButton) {
 		readerModeButton.addEventListener('click', () => toggleReaderMode(tabId));
 	}
+}
+
+async function handlePrimaryAction(): Promise<void> {
+	const payload = await buildClipPayloadFromCurrentPage();
+	await saveWithTarget('kiipu', payload);
 }
 
 async function initializeUI() {
@@ -894,16 +864,6 @@ function populateTemplateDropdown() {
 
 function buildTemplateFieldsSkeleton(template: Template | null) {
 	if (!template) return;
-
-	// Handle vault selection
-	const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement;
-	if (vaultDropdown) {
-		if (template.vault) {
-			vaultDropdown.value = template.vault;
-		} else if (lastSelectedVault) {
-			vaultDropdown.value = lastSelectedVault;
-		}
-	}
 
 	const existingTemplateProperties = document.querySelector('.metadata-properties') as HTMLElement;
 
@@ -1169,41 +1129,6 @@ async function getReplacedTemplate(template: Template, variables: { [key: string
 	return replacedTemplate;
 }
 
-function updateVaultDropdown(vaults: string[]) {
-	const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement | null;
-	const vaultContainer = document.getElementById('vault-container');
-
-	if (!vaultDropdown || !vaultContainer) return;
-
-	// Clear existing options
-	vaultDropdown.textContent = '';
-	
-	vaults.forEach(vault => {
-		const option = document.createElement('option');
-		option.value = vault;
-		option.textContent = vault;
-		vaultDropdown.appendChild(option);
-	});
-
-	// Only show vault selector if vaults are defined
-	if (vaults.length > 0) {
-		vaultContainer.style.display = 'block';
-		if (lastSelectedVault && vaults.includes(lastSelectedVault)) {
-			vaultDropdown.value = lastSelectedVault;
-		} else {
-			vaultDropdown.value = vaults[0];
-		}
-	} else {
-		vaultContainer.style.display = 'none';
-	}
-
-	// Add event listener to update lastSelectedVault when changed
-	vaultDropdown.addEventListener('change', () => {
-		lastSelectedVault = vaultDropdown.value;
-		setLocalStorage('lastSelectedVault', lastSelectedVault);
-	});
-}
-
 function refreshPopup() {
 	window.location.reload();
 }
@@ -1309,17 +1234,15 @@ export async function copyToClipboard(content: string) {
 		}
 
 		const pathField = document.getElementById('path-name-field') as HTMLInputElement;
-		const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement;
 		const path = pathField?.value || '';
-		const vault = vaultDropdown?.value || '';
 		
 		const tabInfo = await getCurrentTabInfo();
-		await incrementStat('copyToClipboard', vault, path, tabInfo.url, tabInfo.title);
+		await incrementStat('copyToClipboard', '', path, tabInfo.url, tabInfo.title);
 
 		// Change the main button text temporarily
 		const clipButton = document.getElementById('clip-btn');
 		if (clipButton) {
-			const originalText = clipButton.textContent || getMessage('addToObsidian');
+			const originalText = clipButton.textContent || getMessage('addToKiipu');
 			clipButton.textContent = getMessage('copied');
 			
 			// Reset the text after 1.5 seconds
@@ -1368,15 +1291,13 @@ function determineMainAction() {
 			} else {
 				mainButton.onclick = async () => {
 					try {
-						const payload = await buildClipPayloadFromCurrentPage();
-						await saveWithTarget('kiipu', payload);
+						await handlePrimaryAction();
 					} catch (error) {
 						console.error('Error in handleClipKiipu:', error);
 						showError(error instanceof Error ? error.message : 'failedToSaveToKiipu');
 					}
 				};
 			}
-			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
 			addSecondaryAction(secondaryActions, 'copyToClipboard', copyContent);
 			addSecondaryAction(secondaryActions, 'saveFile', handleSaveToDownloads);
 			break;
@@ -1384,7 +1305,6 @@ function determineMainAction() {
 			mainButton.textContent = getMessage('copyToClipboard');
 			mainButton.onclick = () => copyContent();
 			// Add direct actions to secondary
-			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
 			addSecondaryAction(secondaryActions, 'addToKiipu', async () => {
 				const payload = await buildClipPayloadFromCurrentPage();
 				await saveWithTarget('kiipu', payload);
@@ -1395,7 +1315,6 @@ function determineMainAction() {
 			mainButton.textContent = getMessage('saveFile');
 			mainButton.onclick = () => handleSaveToDownloads();
 			// Add direct actions to secondary
-			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
 			addSecondaryAction(secondaryActions, 'addToKiipu', async () => {
 				const payload = await buildClipPayloadFromCurrentPage();
 				await saveWithTarget('kiipu', payload);
@@ -1406,27 +1325,14 @@ function determineMainAction() {
 			mainButton.textContent = getMessage('addToKiipu');
 			mainButton.onclick = async () => {
 				try {
-					const payload = await buildClipPayloadFromCurrentPage();
-					await saveWithTarget('kiipu', payload);
+					await handlePrimaryAction();
 				} catch (error) {
 					console.error('Error in handleClipKiipu:', error);
 					showError(error instanceof Error ? error.message : 'failedToSaveToKiipu');
 				}
 			};
-			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
 			addSecondaryAction(secondaryActions, 'copyToClipboard', copyContent);
 			addSecondaryAction(secondaryActions, 'saveFile', handleSaveToDownloads);
-	}
-}
-
-async function handleClipObsidian(): Promise<void> {
-	try {
-		const payload = await buildClipPayloadFromCurrentPage();
-		await saveWithTarget('obsidian', payload);
-	} catch (error) {
-		console.error('Error in handleClipObsidian:', error);
-		showError('failedToSaveFile');
-		throw error;
 	}
 }
 
@@ -1466,7 +1372,6 @@ function getActionIcon(actionType: string): string {
 	switch (actionType) {
 		case 'copyToClipboard': return 'copy';
 		case 'saveFile': return 'file-down';
-		case 'addToObsidian': return 'pen-line';
 		case 'addToKiipu': return 'cloud-upload';
 		case 'settings': return 'settings';
 		default: return 'plus';

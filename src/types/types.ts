@@ -50,7 +50,7 @@ export interface Rating {
 	date: string;
 }
 
-export type SaveBehavior = 'addToObsidian' | 'addToKiipu' | 'saveFile' | 'copyToClipboard';
+export type SaveBehavior = 'addToKiipu' | 'saveFile' | 'copyToClipboard';
 export type SaveTarget = 'obsidian' | 'kiipu' | 'file' | 'clipboard';
 export type KiipuEnvironment = 'production' | 'development' | 'custom';
 export type KiipuVisibility = 'public' | 'unlisted' | 'private';
@@ -91,7 +91,6 @@ export interface Settings {
 	propertyTypes: PropertyType[];
 	readerSettings: ReaderSettings;
 	stats: {
-		addToObsidian: number;
 		addToKiipu: number;
 		saveFile: number;
 		copyToClipboard: number;
@@ -115,7 +114,7 @@ export interface ModelConfig {
 export interface HistoryEntry {
 	datetime: string;
 	url: string;
-	action: 'addToObsidian' | 'addToKiipu' | 'saveFile' | 'copyToClipboard' | 'share';
+	action: 'addToKiipu' | 'saveFile' | 'copyToClipboard' | 'share';
 	title?: string;
 	vault?: string;
 	path?: string;

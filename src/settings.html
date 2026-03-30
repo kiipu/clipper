@@ -121,11 +121,84 @@
 									</div>
 								</div>
 							</div>
-							<div>
-								<h3 data-i18n="vaults">Vaults</h3>
-								<div class="setting-item-description" data-i18n="vaultsDescription">By default, clipped notes are saved to the currently open vault. You can add vaults here if you want the option to save to different vaults. Vault names must exactly match the name of the Obsidian vault. Press <strong>enter</strong> to add a&nbsp;vault.</div>
-								<input type="text" id="vault-input" data-i18n="addVaultPlaceholder" placeholder="Press enter to add a vault" autocomplete="off" spellcheck="false" />
-								<ul id="vault-list"></ul>
+							<div id="kiipu-subsection">
+								<h3 data-i18n="kiipu">Kiipu</h3>
+								<div class="setting-item-description" data-i18n="kiipuDescription">Configure Kiipu as a save target for clipped pages.</div>
+								<div class="setting-item mod-horizontal">
+									<div class="setting-item-info">
+										<label for="kiipu-environment-dropdown" data-i18n="kiipuEnvironment">Environment</label>
+										<div class="setting-item-description" data-i18n="kiipuEnvironmentDescription">Choose the Kiipu API environment used by the extension.</div>
+									</div>
+									<div class="setting-item-control">
+										<select id="kiipu-environment-dropdown">
+											<option value="production" data-i18n="production">Production</option>
+											<option value="development" data-i18n="development">Development</option>
+											<option value="custom" data-i18n="custom">Custom</option>
+										</select>
+									</div>
+								</div>
+								<div class="setting-item mod-horizontal" id="kiipu-base-url-row">
+									<div class="setting-item-info">
+										<label for="kiipu-base-url" data-i18n="kiipuBaseUrl">Base URL</label>
+										<div class="setting-item-description" data-i18n="kiipuBaseUrlDescription">Only used for the custom Kiipu environment.</div>
+									</div>
+									<div class="setting-item-control">
+										<input id="kiipu-base-url" type="text" placeholder="https://api.kiipu.com" />
+									</div>
+								</div>
+								<div class="setting-item mod-horizontal">
+									<div class="setting-item-info">
+										<label for="kiipu-api-key" data-i18n="kiipuApiKey">API key</label>
+										<div class="setting-item-description" data-i18n="kiipuApiKeyDescription">Use your Kiipu user API key to create posts from the extension.</div>
+									</div>
+									<div class="setting-item-control">
+										<input id="kiipu-api-key" type="password" placeholder="cpk_..." autocomplete="off" spellcheck="false" />
+									</div>
+								</div>
+								<div class="setting-item mod-horizontal">
+									<div class="setting-item-info">
+										<label for="kiipu-visibility-dropdown" data-i18n="kiipuVisibility">Visibility</label>
+										<div class="setting-item-description" data-i18n="kiipuVisibilityDescription">Default visibility used when saving clips to Kiipu.</div>
+									</div>
+									<div class="setting-item-control">
+										<select id="kiipu-visibility-dropdown">
+											<option value="private" selected data-i18n="privateVisibility">Private</option>
+											<option value="unlisted" data-i18n="unlistedVisibility">Unlisted</option>
+											<option value="public" data-i18n="publicVisibility">Public</option>
+										</select>
+									</div>
+								</div>
+								<div class="setting-item mod-horizontal">
+									<div class="setting-item-info">
+										<label for="kiipu-tag-mapping-toggle" data-i18n="kiipuEnableTagMapping">Map tags from clip metadata</label>
+										<div class="setting-item-description" data-i18n="kiipuEnableTagMappingDescription">Use matching tag properties and variables when sending a clip to Kiipu.</div>
+									</div>
+									<div class="setting-item-control">
+										<div class="checkbox-container">
+											<input type="checkbox" id="kiipu-tag-mapping-toggle" />
+										</div>
+									</div>
+								</div>
+								<div class="setting-item mod-horizontal">
+									<div class="setting-item-info">
+										<label for="kiipu-validate-before-save-toggle" data-i18n="kiipuValidateBeforeSave">Validate API key before save</label>
+										<div class="setting-item-description" data-i18n="kiipuValidateBeforeSaveDescription">Check your Kiipu API key before creating a post.</div>
+									</div>
+									<div class="setting-item-control">
+										<div class="checkbox-container">
+											<input type="checkbox" id="kiipu-validate-before-save-toggle" />
+										</div>
+									</div>
+								</div>
+								<div class="setting-item mod-horizontal">
+									<div class="setting-item-info">
+										<label for="kiipu-test-connection-btn" data-i18n="kiipuTestConnection">Test connection</label>
+										<div class="setting-item-description" id="kiipu-test-result"></div>
+									</div>
+									<div class="setting-item-control">
+										<button type="button" id="kiipu-test-connection-btn" data-i18n="kiipuTestConnection">Test connection</button>
+									</div>
+								</div>
 							</div>
 							<div id="hotkeys-subsection">
 								<h3 data-i18n="hotkeys">Hotkeys</h3>
@@ -171,90 +244,10 @@
 									</div>
 									<div class="setting-item-control">
 										<select id="save-behavior-dropdown">
-											<option value="addToObsidian" data-i18n="addToObsidian">Add to Obsidian</option>
 											<option value="addToKiipu" selected data-i18n="addToKiipu">Save to Kiipu</option>
 											<option value="copyToClipboard" data-i18n="copyToClipboard">Copy to clipboard</option>
 											<option value="saveFile" data-i18n="saveFile">Save file</option>
 										</select>
-									</div>
-								</div>
-								<div>
-									<h3 data-i18n="kiipu">Kiipu</h3>
-									<div class="setting-item-description" data-i18n="kiipuDescription">Configure Kiipu as a save target for clipped pages.</div>
-									<div class="setting-item mod-horizontal">
-										<div class="setting-item-info">
-											<label for="kiipu-environment-dropdown" data-i18n="kiipuEnvironment">Environment</label>
-											<div class="setting-item-description" data-i18n="kiipuEnvironmentDescription">Choose the Kiipu API environment used by the extension.</div>
-										</div>
-										<div class="setting-item-control">
-											<select id="kiipu-environment-dropdown">
-												<option value="production" data-i18n="production">Production</option>
-												<option value="development" data-i18n="development">Development</option>
-												<option value="custom" data-i18n="custom">Custom</option>
-											</select>
-										</div>
-									</div>
-									<div class="setting-item mod-horizontal" id="kiipu-base-url-row">
-										<div class="setting-item-info">
-											<label for="kiipu-base-url" data-i18n="kiipuBaseUrl">Base URL</label>
-											<div class="setting-item-description" data-i18n="kiipuBaseUrlDescription">Only used for the custom Kiipu environment.</div>
-										</div>
-										<div class="setting-item-control">
-											<input id="kiipu-base-url" type="text" placeholder="https://api.kiipu.com" />
-										</div>
-									</div>
-									<div class="setting-item mod-horizontal">
-										<div class="setting-item-info">
-											<label for="kiipu-api-key" data-i18n="kiipuApiKey">API key</label>
-											<div class="setting-item-description" data-i18n="kiipuApiKeyDescription">Use your Kiipu user API key to create posts from the extension.</div>
-										</div>
-										<div class="setting-item-control">
-											<input id="kiipu-api-key" type="password" placeholder="cpk_..." autocomplete="off" spellcheck="false" />
-										</div>
-									</div>
-									<div class="setting-item mod-horizontal">
-										<div class="setting-item-info">
-											<label for="kiipu-visibility-dropdown" data-i18n="kiipuVisibility">Visibility</label>
-											<div class="setting-item-description" data-i18n="kiipuVisibilityDescription">Default visibility used when saving clips to Kiipu.</div>
-										</div>
-										<div class="setting-item-control">
-											<select id="kiipu-visibility-dropdown">
-												<option value="private" selected data-i18n="privateVisibility">Private</option>
-												<option value="unlisted" data-i18n="unlistedVisibility">Unlisted</option>
-												<option value="public" data-i18n="publicVisibility">Public</option>
-											</select>
-										</div>
-									</div>
-									<div class="setting-item mod-horizontal">
-										<div class="setting-item-info">
-											<label for="kiipu-tag-mapping-toggle" data-i18n="kiipuEnableTagMapping">Map tags from clip metadata</label>
-											<div class="setting-item-description" data-i18n="kiipuEnableTagMappingDescription">Use matching tag properties and variables when sending a clip to Kiipu.</div>
-										</div>
-										<div class="setting-item-control">
-											<div class="checkbox-container">
-												<input type="checkbox" id="kiipu-tag-mapping-toggle" />
-											</div>
-										</div>
-									</div>
-									<div class="setting-item mod-horizontal">
-										<div class="setting-item-info">
-											<label for="kiipu-validate-before-save-toggle" data-i18n="kiipuValidateBeforeSave">Validate API key before save</label>
-											<div class="setting-item-description" data-i18n="kiipuValidateBeforeSaveDescription">Check your Kiipu API key before creating a post.</div>
-										</div>
-										<div class="setting-item-control">
-											<div class="checkbox-container">
-												<input type="checkbox" id="kiipu-validate-before-save-toggle" />
-											</div>
-										</div>
-									</div>
-									<div class="setting-item mod-horizontal">
-										<div class="setting-item-info">
-											<label for="kiipu-test-connection-btn" data-i18n="kiipuTestConnection">Test connection</label>
-											<div class="setting-item-description" id="kiipu-test-result"></div>
-										</div>
-										<div class="setting-item-control">
-											<button type="button" id="kiipu-test-connection-btn" data-i18n="kiipuTestConnection">Test connection</button>
-										</div>
 									</div>
 								</div>
 								<div class="setting-item mod-horizontal">
@@ -585,13 +578,6 @@
 									<label for="template-path-name" data-i18n="noteLocation">Note location</label>
 									<div class="setting-item-description" data-i18n="noteLocationDescription">The folder or path of the note.</div>
 									<input type="text" id="template-path-name" placeholder="Clippings" />
-								</div>
-								<div class="setting-item">
-									<label for="template-vault" data-i18n="vault">Vault</label>
-									<div class="setting-item-description" data-i18n="vaultDescription">Select the default vault for this template. Go to general settings to add or remove vaults.</div>
-									<select id="template-vault">
-										<option value="" data-i18n="lastUsed">Last used</option>
-									</select>
 								</div>
 								<div class="setting-item">
 									<label for="url-patterns" data-i18n="templateTriggers">Template triggers</label>

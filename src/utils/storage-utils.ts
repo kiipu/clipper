@@ -30,7 +30,6 @@ export let generalSettings: Settings = {
 		themeMode: 'auto'
 	},
 	stats: {
-		addToObsidian: 0,
 		addToKiipu: 0,
 		saveFile: 0,
 		copyToClipboard: 0,
@@ -92,7 +91,6 @@ interface StorageData {
 	};
 	property_types?: PropertyType[];
 	stats?: {
-		addToObsidian: number;
 		addToKiipu?: number;
 		saveFile: number;
 		copyToClipboard: number;
@@ -103,7 +101,11 @@ interface StorageData {
 	migrationVersion?: number;
 }
 
-const CURRENT_MIGRATION_VERSION = 2;
+const CURRENT_MIGRATION_VERSION = 3;
+
+function normalizeDefaultSaveTarget(value: string | undefined): Settings['defaultSaveTarget'] {
+	return value === 'saveFile' || value === 'copyToClipboard' ? value : 'addToKiipu';
+}
 
 export async function loadSettings(): Promise<Settings> {
 	const data = await browser.storage.sync.get(null) as StorageData;
@@ -135,7 +137,6 @@ export async function loadSettings(): Promise<Settings> {
 			themeMode: 'auto'
 		},
 		stats: {
-			addToObsidian: 0,
 			addToKiipu: 0,
 			saveFile: 0,
 			copyToClipboard: 0,
@@ -160,9 +161,11 @@ export async function loadSettings(): Promise<Settings> {
 		debugLog('Settings', `Updated migration version to ${CURRENT_MIGRATION_VERSION}`);
 	}
 
-	const defaultSaveTarget = data.general_settings?.defaultSaveTarget
+	const defaultSaveTarget = normalizeDefaultSaveTarget(
+		data.general_settings?.defaultSaveTarget
 		?? data.general_settings?.saveBehavior
-		?? defaultSettings.defaultSaveTarget;
+		?? defaultSettings.defaultSaveTarget
+	);
 
 	// Validate and sanitize data to prevent corruption
 	const sanitizedVaults = Array.isArray(data.vaults) ? data.vaults.filter(v => typeof v === 'string') : [];

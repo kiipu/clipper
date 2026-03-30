@@ -1,10 +1,9 @@
-import { handleDragStart, handleDragOver, handleDrop, handleDragEnd } from '../utils/drag-and-drop';
 import { initializeIcons } from '../icons/icons';
 import { getCommands } from '../utils/hotkeys';
 import { initializeToggles, updateToggleState, initializeSettingToggle } from '../utils/ui-utils';
 import { generalSettings, loadSettings, saveSettings, setLocalStorage, getLocalStorage } from '../utils/storage-utils';
 import { detectBrowser } from '../utils/browser-detection';
-import { createElementWithClass, createElementWithHTML } from '../utils/dom-utils';
+import { createElementWithClass } from '../utils/dom-utils';
 import { createDefaultTemplate, getTemplates, saveTemplateSettings } from '../managers/template-manager';
 import { updateTemplateList, showTemplateEditor } from '../managers/template-ui';
 import { exportAllSettings, importAllSettings } from '../utils/import-export';
@@ -28,57 +27,6 @@ const STORE_URLS = {
 	safari: 'https://apps.apple.com/us/app/obsidian-web-clipper/id6720708363',
 	edge: 'https://microsoftedge.microsoft.com/addons/detail/obsidian-web-clipper/eigdjhmgnaaeaonimdklocfekkaanfme'
 };
-
-export function updateVaultList(): void {
-	const vaultList = document.getElementById('vault-list') as HTMLUListElement;
-	if (!vaultList) return;
-
-	// Clear existing vaults
-	vaultList.textContent = '';
-	generalSettings.vaults.forEach((vault, index) => {
-		const li = document.createElement('li');
-		li.dataset.index = index.toString();
-		li.draggable = true;
-
-		const dragHandle = createElementWithClass('div', 'drag-handle');
-		dragHandle.appendChild(createElementWithHTML('i', '', { 'data-lucide': 'grip-vertical' }));
-		li.appendChild(dragHandle);
-
-		const span = document.createElement('span');
-		span.textContent = vault;
-		li.appendChild(span);
-
-		const removeBtn = createElementWithClass('button', 'remove-vault-btn clickable-icon');
-		removeBtn.setAttribute('type', 'button');
-		removeBtn.setAttribute('aria-label', getMessage('removeVault'));
-		removeBtn.appendChild(createElementWithHTML('i', '', { 'data-lucide': 'trash-2' }));
-		li.appendChild(removeBtn);
-
-		li.addEventListener('dragstart', handleDragStart);
-		li.addEventListener('dragover', handleDragOver);
-		li.addEventListener('drop', handleDrop);
-		li.addEventListener('dragend', handleDragEnd);
-		removeBtn.addEventListener('click', (e) => {
-			e.stopPropagation();
-			removeVault(index);
-		});
-		vaultList.appendChild(li);
-	});
-
-	initializeIcons(vaultList);
-}
-
-export function addVault(vault: string): void {
-	generalSettings.vaults.push(vault);
-	saveSettings();
-	updateVaultList();
-}
-
-export function removeVault(index: number): void {
-	generalSettings.vaults.splice(index, 1);
-	saveSettings();
-	updateVaultList();
-}
 
 export async function setShortcutInstructions() {
 	const shortcutInstructionsElement = document.querySelector('.shortcut-instructions');
@@ -212,12 +160,10 @@ export function initializeGeneralSettings(): void {
 			}
 		}
 
-		updateVaultList();
 		initializeShowMoreActionsToggle();
 		initializeBetaFeaturesToggle();
 		initializeLegacyModeToggle();
 		initializeSilentOpenToggle();
-		initializeVaultInput();
 		initializeOpenBehaviorDropdown();
 		initializeKeyboardShortcuts();
 		initializeToggles();
@@ -302,22 +248,6 @@ function initializeShowMoreActionsToggle(): void {
 	});
 }
 
-function initializeVaultInput(): void {
-	const vaultInput = document.getElementById('vault-input') as HTMLInputElement;
-	if (vaultInput) {
-		vaultInput.addEventListener('keypress', (e) => {
-			if (e.key === 'Enter') {
-				e.preventDefault();
-				const newVault = vaultInput.value.trim();
-				if (newVault) {
-					addVault(newVault);
-					vaultInput.value = '';
-				}
-			}
-		});
-	}
-}
-
 async function initializeKeyboardShortcuts(): Promise<void> {
 	const shortcutsList = document.getElementById('keyboard-shortcuts-list');
 	if (!shortcutsList) return;
@@ -391,7 +321,7 @@ function initializeSaveBehaviorDropdown(): void {
 
     dropdown.value = generalSettings.defaultSaveTarget;
     dropdown.addEventListener('change', () => {
-        const newValue = dropdown.value as 'addToObsidian' | 'addToKiipu' | 'copyToClipboard' | 'saveFile';
+        const newValue = dropdown.value as 'addToKiipu' | 'copyToClipboard' | 'saveFile';
         saveSettings({ saveBehavior: newValue, defaultSaveTarget: newValue });
     });
 }

@@ -31,7 +31,6 @@ export const generalSettings: Settings = {
 		themeMode: 'auto',
 	},
 	stats: {
-		addToObsidian: 0,
 		addToKiipu: 0,
 		saveFile: 0,
 		copyToClipboard: 0,
