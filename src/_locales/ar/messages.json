@@ -17,7 +17,7 @@
 	"addProviderTitle": {
 		"message": "أضف مزود"
 	},
-	"addToObsidian": {
+	"addToKiipu": {
 		"message": "إضافة إلى أوبسيديان"
 	},
 	"addVaultPlaceholder": {
@@ -42,7 +42,7 @@
 		"message": "لا يوجد مفتاح API"
 	},
 	"apiKeysWarning": {
-		"message": "باستخدام مزود خارجي، فإنك توافق على شروطهم وسياسة الخصوصية الخاصة بهم. يتم إرسال طلبات المفسر مباشرة إلى المزود الذي تختاره. لا يقوم Obsidian بجمع أو تخزين أي بيانات حول طلباتك."
+		"message": "باستخدام مزود خارجي، فإنك توافق على شروطهم وسياسة الخصوصية الخاصة بهم. يتم إرسال طلبات المفسر مباشرة إلى المزود الذي تختاره. لا يقوم Kiipu بجمع أو تخزين أي بيانات حول طلباتك."
 	},
 	"appendToDaily": {
 		"message": "إضافة إلى الملاحظة اليومية، في النهاية"
@@ -104,7 +104,7 @@
 		}
 	},
 	"clipboardError": {
-		"message": "لا يستطيع Obsidian الوصول إلى الحافظة لديك. جرّب إرشادات استكشاف الأخطاء وإصلاحها هنا: $1",
+		"message": "لا يستطيع Kiipu الوصول إلى الحافظة لديك. جرّب إرشادات استكشاف الأخطاء وإصلاحها هنا: $1",
 		"placeholders": {
 			"1": {
 				"content": "$1"
@@ -190,7 +190,7 @@
 				"content": "</a>"
 			},
 			"link_start": {
-				"content": "<a href=\"https://help.obsidian.md/Obsidian/Early+access+versions\" target=\"_blank\">"
+				"content": "<a href=\"https://help.obsidian.md/Kiipu/Early+access+versions\" target=\"_blank\">"
 			}
 		}
 	},

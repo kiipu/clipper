@@ -22,7 +22,7 @@ declare global {
 	window.obsidianClipperGeneration = (window.obsidianClipperGeneration ?? 0) + 1;
 	const myGeneration = window.obsidianClipperGeneration;
 
-	console.log('[Obsidian Clipper] Initializing content script, generation', myGeneration);
+	console.log('[Kiipu Clipper] Initializing content script, generation', myGeneration);
 
 	let isHighlighterMode = false;
 	const iframeId = 'obsidian-clipper-iframe';
@@ -334,7 +334,7 @@ declare global {
 				};
 				sendResponse(response);
 			}).catch((error: unknown) => {
-				console.error('[Obsidian Clipper] getPageContent error:', error);
+				console.error('[Kiipu Clipper] getPageContent error:', error);
 				sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
 			});
 			return true;

@@ -1,4 +1,4 @@
-Obsidian Web Clipper helps you highlight and capture the web in your favorite browser. Anything you save is stored as durable Markdown files that you can read offline, and preserve for the long term.
+Kiipu Web Clipper helps you highlight and capture the web in your favorite browser. Anything you save is stored as durable Markdown files that you can read offline, and preserve for the long term.
 
 - **[Download Web Clipper](https://obsidian.md/clipper)**
 - **[Documentation](https://help.obsidian.md/web-clipper)**
@@ -76,8 +76,8 @@ If you want to run the extension permanently you can do so with the Nightly or D
 For iOS Simulator testing on macOS:
 
 1. Run `npm run build` to build the extension
-2. Open `xcode/Obsidian Web Clipper/Obsidian Web Clipper.xcodeproj` in Xcode
-3. Select the **Obsidian Web Clipper (iOS)** scheme from the scheme selector
+2. Open `xcode/Kiipu Web Clipper/Kiipu Web Clipper.xcodeproj` in Xcode
+3. Select the **Kiipu Web Clipper (iOS)** scheme from the scheme selector
 4. Choose an iOS Simulator device and click **Run** to build and launch the app
 5. Once the app is running on the simulator, open **Safari**
 6. Navigate to a webpage and tap the **Extensions** button in Safari to access the Web Clipper extension

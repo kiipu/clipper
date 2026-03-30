@@ -186,16 +186,16 @@ async function saveToKiipuRequest(payload: ClipPayload, tabId?: number): Promise
 
 async function injectContentScript(tabId: number): Promise<void> {
 	if (browser.scripting) {
-		console.log('[Obsidian Clipper] Using scripting API');
+		console.log('[Kiipu Clipper] Using scripting API');
 		await browser.scripting.executeScript({
 			target: { tabId },
 			files: ['content.js']
 		});
 	} else {
-		console.log('[Obsidian Clipper] Using tabs.executeScript fallback');
+		console.log('[Kiipu Clipper] Using tabs.executeScript fallback');
 		await browser.tabs.executeScript(tabId, { file: 'content.js' });
 	}
-	console.log('[Obsidian Clipper] Injection completed, waiting for init...');
+	console.log('[Kiipu Clipper] Injection completed, waiting for init...');
 
 	// Poll until the content script responds, rather than a fixed delay.
 	// Try immediately after injection, then back off with 50ms sleeps.
@@ -213,7 +213,7 @@ async function injectContentScript(tabId: number): Promise<void> {
 	if (!ready) {
 		throw new Error('Content script did not respond after injection');
 	}
-	console.log('[Obsidian Clipper] Post-injection ping succeeded');
+	console.log('[Kiipu Clipper] Post-injection ping succeeded');
 }
 
 async function ensureContentScriptLoadedInBackground(tabId: number): Promise<void> {
@@ -229,7 +229,7 @@ async function ensureContentScriptLoadedInBackground(tabId: number): Promise<voi
 
 		// Attempt to send a message to the content script
 		await browser.tabs.sendMessage(tabId, { action: "ping" });
-		console.log('[Obsidian Clipper] Content script ping succeeded');
+		console.log('[Kiipu Clipper] Content script ping succeeded');
 	} catch (error) {
 		// If the error is about invalid URL, re-throw it
 		if (error instanceof Error && error.message.includes('invalid URL')) {
@@ -237,7 +237,7 @@ async function ensureContentScriptLoadedInBackground(tabId: number): Promise<voi
 		}
 
 		// If the message fails, the content script is not loaded, so inject it
-		console.log('[Obsidian Clipper] Ping failed, injecting content script...', error);
+		console.log('[Kiipu Clipper] Ping failed, injecting content script...', error);
 		await injectContentScript(tabId);
 	}
 }
@@ -531,7 +531,7 @@ browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime
 				injectContentScript(tabId)
 					.then(() => sendResponse({ success: true }))
 					.catch((error) => {
-						console.error('[Obsidian Clipper] forceInjectContentScript failed:', error);
+						console.error('[Kiipu Clipper] forceInjectContentScript failed:', error);
 						sendResponse({ success: false, error: error instanceof Error ? error.message : String(error) });
 					});
 				return true;
@@ -561,13 +561,13 @@ browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime
 			if (tabId && message) {
 				// Ensure content script is loaded before sending message
 				ensureContentScriptLoadedInBackground(tabId).then(() => {
-					console.log('[Obsidian Clipper] Sending message to tab:', message.action);
+					console.log('[Kiipu Clipper] Sending message to tab:', message.action);
 					return browser.tabs.sendMessage(tabId, message);
 				}).then((response) => {
-					console.log('[Obsidian Clipper] Tab response:', response ? 'has content=' + !!((response as any).content) : response);
+					console.log('[Kiipu Clipper] Tab response:', response ? 'has content=' + !!((response as any).content) : response);
 					sendResponse(response);
 				}).catch((error) => {
-					console.error('[Obsidian Clipper] Error sending message to tab:', error);
+					console.error('[Kiipu Clipper] Error sending message to tab:', error);
 					sendResponse({
 						success: false,
 						error: error instanceof Error ? error.message : String(error)
@@ -592,7 +592,7 @@ browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime
 						browser.tabs.update(currentTab.id, { url: url }).then(() => {
 							sendResponse({ success: true });
 						}).catch((error) => {
-							console.error('Error opening Obsidian URL:', error);
+							console.error('Error opening Kiipu URL:', error);
 							sendResponse({
 								success: false,
 								error: error instanceof Error ? error.message : String(error)

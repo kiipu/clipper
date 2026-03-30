@@ -1373,7 +1373,7 @@ export class Reader {
 
 			// Show footer with stats
 			const footerItems = [
-				'Obsidian Reader',
+				'Kiipu Reader',
 				wordCount ? new Intl.NumberFormat().format(wordCount) + ' words' : '',
 				(parseTime ? 'parsed in ' + new Intl.NumberFormat().format(parseTime) + ' ms' : '')
 			].filter(Boolean);

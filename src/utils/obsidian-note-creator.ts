@@ -19,7 +19,7 @@ function openObsidianUrl(url: string): void {
 		action: "openObsidianUrl",
 		url: url
 	}).catch((error) => {
-		console.error('Error opening Obsidian URL via background script:', error);
+		console.error('Error opening Kiipu URL via background script:', error);
 		window.open(url, '_blank');
 	});
 }
@@ -30,14 +30,14 @@ async function tryClipboardWrite(fileContent: string, obsidianUrl: string): Prom
 	if (success) {
 		obsidianUrl += `&clipboard&content=${encodeURIComponent(getMessage('clipboardError', 'https://help.obsidian.md/web-clipper/troubleshoot'))}`;
 		openObsidianUrl(obsidianUrl);
-		console.log('Obsidian URL:', obsidianUrl);
+		console.log('Kiipu URL:', obsidianUrl);
 	} else {
 		console.error('All clipboard methods failed, falling back to URI method');
 		// Final fallback: use URI method with actual content (same as legacy mode)
 		// Note: We don't add &clipboard here since we're bypassing the clipboard entirely
 		obsidianUrl += `&content=${encodeURIComponent(fileContent)}`;
 		openObsidianUrl(obsidianUrl);
-		console.log('Obsidian URL (URI fallback):', obsidianUrl);
+		console.log('Kiipu URL (URI fallback):', obsidianUrl);
 	}
 }
 
@@ -83,7 +83,7 @@ export async function saveToObsidian(
 	if (generalSettings.legacyMode) {
 		// Use the URI method
 		obsidianUrl += `&content=${encodeURIComponent(fileContent)}`;
-		console.log('Obsidian URL:', obsidianUrl);
+		console.log('Kiipu URL:', obsidianUrl);
 		openObsidianUrl(obsidianUrl);
 	} else {
 		// Try to copy to clipboard with fallback mechanisms

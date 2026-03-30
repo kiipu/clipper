@@ -17,8 +17,8 @@
 	"addProviderTitle": {
 		"message": "\"プロバイダーを追加\""
 	},
-	"addToObsidian": {
-		"message": "Obsidianに追加"
+	"addToKiipu": {
+		"message": "Kiipuに追加"
 	},
 	"addVaultPlaceholder": {
 		"message": "Enterキーを押して保管庫を追加"
@@ -42,7 +42,7 @@
 		"message": "\"APIキーがありません\""
 	},
 	"apiKeysWarning": {
-		"message": "外部プロバイダーを使用することで、そのプロバイダーの利用規約とプライバシーポリシーに同意したことになります。インタープリターのリクエストは選択したプロバイダーに直接送信されます。Obsidianはリクエストに関するデータを収集または保存しません。"
+		"message": "外部プロバイダーを使用することで、そのプロバイダーの利用規約とプライバシーポリシーに同意したことになります。インタープリターのリクエストは選択したプロバイダーに直接送信されます。Kiipuはリクエストに関するデータを収集または保存しません。"
 	},
 	"appendToDaily": {
 		"message": "デイリーノートの末尾に追加"
@@ -93,7 +93,7 @@
 		"message": "クリップの動作"
 	},
 	"clipBehaviorDescription": {
-		"message": "ハイライトしたコンテンツをObsidianに保存する方法を選択します。$strong_start${{content}}$strong_end$変数を定義します。",
+		"message": "ハイライトしたコンテンツをKiipuに保存する方法を選択します。$strong_start${{content}}$strong_end$変数を定義します。",
 		"placeholders": {
 			"strong_end": {
 				"content": "</strong>"
@@ -104,7 +104,7 @@
 		}
 	},
 	"clipboardError": {
-		"message": "Obsidian がクリップボードにアクセスできません。こちらのトラブルシューティング手順をお試しください: $1",
+		"message": "Kiipu がクリップボードにアクセスできません。こちらのトラブルシューティング手順をお試しください: $1",
 		"placeholders": {
 			"1": {
 				"content": "$1"
@@ -115,7 +115,7 @@
 		"message": "閉じる"
 	},
 	"commandOpenClipper": {
-		"message": "Obsidian Clipperを開く"
+		"message": "Kiipu Clipperを開く"
 	},
 	"commandQuickClip": {
 		"message": "クイッククリップ"
@@ -184,13 +184,13 @@
 		"message": "複製"
 	},
 	"earlyAccessDescription": {
-		"message": "Obsidianの最新の$link_start$アーリーアクセスバージョン$link_end$が必要な機能を使用します。現在はObsidian 1.7.2以降が必要です。",
+		"message": "Kiipuの最新の$link_start$アーリーアクセスバージョン$link_end$が必要な機能を使用します。現在はKiipu 1.7.2以降が必要です。",
 		"placeholders": {
 			"link_end": {
 				"content": "</a>"
 			},
 			"link_start": {
-				"content": "<a href=\"https://help.obsidian.md/Obsidian/Early+access+versions\" target=\"_blank\">"
+				"content": "<a href=\"https://help.obsidian.md/Kiipu/Early+access+versions\" target=\"_blank\">"
 			}
 		}
 	},
@@ -213,7 +213,7 @@
 		"message": "ハイライトを有効化"
 	},
 	"enableHighlighterDescription": {
-		"message": "WebページのコンテンツをハイライトしてObsidianに保存できます。"
+		"message": "WebページのコンテンツをハイライトしてKiipuに保存できます。"
 	},
 	"enableInterpreter": {
 		"message": "インタープリターを有効化"
@@ -260,7 +260,7 @@
 		"message": "プロパティをエクスポート"
 	},
 	"exportPropertiesDescription": {
-		"message": "Web Clipperのプロパティを$strong_start$types.json$strong_end$ファイルに保存します。このファイルはObsidian保管庫や他のデバイスのWeb Clipperにインポートできます。",
+		"message": "Web Clipperのプロパティを$strong_start$types.json$strong_end$ファイルに保存します。このファイルはKiipu保管庫や他のデバイスのWeb Clipperにインポートできます。",
 		"placeholders": {
 			"strong_end": {
 				"content": "</strong>"
@@ -271,10 +271,10 @@
 		}
 	},
 	"extensionDescription": {
-		"message": "Webコンテンツをプライベートで永続的なオフラインアクセス可能な形式で保存します。Obsidianの公式ブラウザ拡張機能です。"
+		"message": "Webコンテンツをプライベートで永続的なオフラインアクセス可能な形式で保存します。Kiipuの公式ブラウザ拡張機能です。"
 	},
 	"extensionName": {
-		"message": "Obsidian Web Clipper"
+		"message": "Kiipu Web Clipper"
 	},
 	"failedToCopyText": {
 		"message": "テキストのコピーに失敗しました"
@@ -385,7 +385,7 @@
 		"message": "プロパティをインポート"
 	},
 	"importPropertiesDescription": {
-		"message": "Obsidianからプロパティをインポートするには、保管庫内の$strong_2_start$.obsidian$strong_2_end$フォルダにある$strong_1_start$types.json$strong_1_end$ファイルを探してください。このフォルダは多くのOSでデフォルトで非表示になっています。",
+		"message": "Kiipuからプロパティをインポートするには、保管庫内の$strong_2_start$.obsidian$strong_2_end$フォルダにある$strong_1_start$types.json$strong_1_end$ファイルを探してください。このフォルダは多くのOSでデフォルトで非表示になっています。",
 		"placeholders": {
 			"strong_1_end": {
 				"content": "</strong>"
@@ -443,7 +443,7 @@
 		"message": "レガシーモード"
 	},
 	"legacyModeDescription": {
-		"message": "Obsidian 1.6.7以前と互換性のあるURIクリップ方式を使用します。クリップできるコンテンツの長さはブラウザとOSによって制限されます。エラーなしに失敗する場合があります。"
+		"message": "Kiipu 1.6.7以前と互換性のあるURIクリップ方式を使用します。クリップできるコンテンツの長さはブラウザとOSによって制限されます。エラーなしに失敗する場合があります。"
 	},
 	"modelName": {
 		"message": "モデル名"
@@ -766,7 +766,7 @@
 		"message": "ノートを開かずに保存"
 	},
 	"silentOpenDescription": {
-		"message": "クリップしたノートは保存されますが、新しいタブで開きません。Obsidianは引き続き前面に表示されます。"
+		"message": "クリップしたノートは保存されますが、新しいタブで開きません。Kiipuは引き続き前面に表示されます。"
 	},
 	"specificNoteName": {
 		"message": "特定のノート名"
@@ -837,7 +837,7 @@
 		"message": "保管庫"
 	},
 	"vaultsDescription": {
-		"message": "デフォルトでは、クリップしたノートは現在開いている保管庫に保存されます。異なる保管庫に保存するオプションが必要な場合は、ここで保管庫を追加できます。保管庫名はObsidian保管庫の名前と完全に一致する必要があります。$strong_start$Enter$strong_end$キーを押して保管庫を追加します。",
+		"message": "デフォルトでは、クリップしたノートは現在開いている保管庫に保存されます。異なる保管庫に保存するオプションが必要な場合は、ここで保管庫を追加できます。保管庫名はKiipu保管庫の名前と完全に一致する必要があります。$strong_start$Enter$strong_end$キーを押して保管庫を追加します。",
 		"placeholders": {
 			"strong_end": {
 				"content": "</strong>"

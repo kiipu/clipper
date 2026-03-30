@@ -171,7 +171,7 @@ module.exports = (env, argv) => {
 			...(isProduction ? [
 				new ZipPlugin({
 					path: path.resolve(__dirname, 'builds'),
-					filename: `obsidian-web-clipper-${package.version}-${browserName}.zip`,
+					filename: `kiipu-web-clipper-${package.version}-${browserName}.zip`,
 				})
 			] : [])
 		]
