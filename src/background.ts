@@ -3,6 +3,9 @@ import { detectBrowser } from './utils/browser-detection';
 import { updateCurrentActiveTab, isValidUrl, isBlankPage } from './utils/active-tab-manager';
 import { TextHighlightData } from './utils/highlighter';
 import { debounce } from './utils/debounce';
+import { loadSettings } from './utils/storage-utils';
+import { ClipPayload, KiipuCreatePostResponse, KiipuValidateKeyResponse, SaveResult } from './types/types';
+import { mapClipPayloadToKiipuRequest, resolveKiipuBaseUrl } from './utils/kiipu';
 
 const YOUTUBE_EMBED_RULE_ID = 9001;
 
@@ -61,6 +64,125 @@ let highlighterModeState: { [tabId: number]: boolean } = {};
 let hasHighlights = false;
 let isContextMenuCreating = false;
 let popupPorts: { [tabId: number]: browser.Runtime.Port } = {};
+const KIIPU_TIMEOUT_MS = 10000;
+
+function isKiipuConfigured(baseUrl: string, apiKey: string): boolean {
+	return Boolean(baseUrl.trim() && apiKey.trim());
+}
+
+function buildKiipuErrorResult(status: number, message?: string): SaveResult {
+	if (status === 400) {
+		return { ok: false, errorCode: 'bad_request', errorMessage: message || 'Bad request' };
+	}
+	if (status === 401 || status === 403) {
+		return { ok: false, errorCode: 'unauthorized', errorMessage: message || 'Unauthorized' };
+	}
+	if (status === 404) {
+		return { ok: false, errorCode: 'not_found', errorMessage: message || 'Not found' };
+	}
+	if (status === 409) {
+		return { ok: false, errorCode: 'conflict', errorMessage: message || 'Conflict' };
+	}
+	if (status >= 500) {
+		return { ok: false, errorCode: 'server_error', errorMessage: message || 'Server error' };
+	}
+	return { ok: false, errorCode: 'unknown_error', errorMessage: message || 'Unknown error' };
+}
+
+async function fetchKiipuJson<T>(input: string, init: RequestInit): Promise<T> {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), KIIPU_TIMEOUT_MS);
+
+	try {
+		const response = await fetch(input, {
+			...init,
+			signal: controller.signal
+		});
+		const responseText = await response.text();
+		const responseJson = responseText ? JSON.parse(responseText) : null;
+
+		if (!response.ok) {
+			const message = responseJson?.message || responseJson?.error || response.statusText;
+			throw buildKiipuErrorResult(response.status, message);
+		}
+
+		return responseJson as T;
+	} catch (error) {
+		if ((error as Error).name === 'AbortError') {
+			throw { ok: false, errorCode: 'timeout', errorMessage: 'Request timed out' } satisfies SaveResult;
+		}
+		if ((error as SaveResult).errorCode) {
+			throw error;
+		}
+		throw { ok: false, errorCode: 'network_error', errorMessage: (error as Error).message } satisfies SaveResult;
+	} finally {
+		clearTimeout(timeoutId);
+	}
+}
+
+async function validateKiipuApiKeyRequest(): Promise<SaveResult & { user?: KiipuValidateKeyResponse['data'] }> {
+	const settings = await loadSettings();
+	const baseUrl = resolveKiipuBaseUrl(settings.kiipu);
+	const apiKey = settings.kiipu.apiKey;
+
+	if (!isKiipuConfigured(baseUrl, apiKey)) {
+		return { ok: false, errorCode: 'missing_config', errorMessage: 'Kiipu is not configured yet.' };
+	}
+
+	try {
+		const response = await fetchKiipuJson<KiipuValidateKeyResponse>(`${baseUrl}/auth/api-key/me`, {
+			method: 'GET',
+			headers: {
+				'Authorization': `Bearer ${apiKey}`
+			}
+		});
+
+		return {
+			ok: true,
+			user: response.data
+		};
+	} catch (error) {
+		return error as SaveResult;
+	}
+}
+
+async function saveToKiipuRequest(payload: ClipPayload, tabId?: number): Promise<SaveResult> {
+	const settings = await loadSettings();
+	const baseUrl = resolveKiipuBaseUrl(settings.kiipu);
+	const apiKey = settings.kiipu.apiKey;
+
+	if (!isKiipuConfigured(baseUrl, apiKey)) {
+		return { ok: false, errorCode: 'missing_config', errorMessage: 'Kiipu is not configured yet.' };
+	}
+
+	if (settings.kiipu.validateBeforeSave) {
+		const validation = await validateKiipuApiKeyRequest();
+		if (!validation.ok) {
+			return validation;
+		}
+	}
+
+	try {
+		const requestBody = mapClipPayloadToKiipuRequest(payload, settings.kiipu, { tabId });
+		const response = await fetchKiipuJson<KiipuCreatePostResponse>(`${baseUrl}/skill/posts`, {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${apiKey}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(requestBody)
+		});
+
+		return {
+			ok: true,
+			requestId: response.requestId,
+			postId: response.data.id,
+			createdAt: response.data.createdAt
+		};
+	} catch (error) {
+		return error as SaveResult;
+	}
+}
 
 async function injectContentScript(tabId: number): Promise<void> {
 	if (browser.scripting) {
@@ -173,7 +295,14 @@ async function sendMessageToPopup(tabId: number, message: any): Promise<void> {
 
 browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime.MessageSender, sendResponse: (response?: any) => void): true | undefined => {
 	if (typeof request === 'object' && request !== null) {
-		const typedRequest = request as { action: string; isActive?: boolean; hasHighlights?: boolean; tabId?: number; text?: string };
+		const typedRequest = request as {
+			action: string;
+			isActive?: boolean;
+			hasHighlights?: boolean;
+			tabId?: number;
+			text?: string;
+			payload?: ClipPayload;
+		};
 		
 		if (typedRequest.action === 'copy-to-clipboard' && typedRequest.text) {
 			// Use content script to copy to clipboard
@@ -410,6 +539,20 @@ browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime
 				sendResponse({ success: false, error: 'Missing tabId' });
 				return true;
 			}
+		}
+
+		if (typedRequest.action === 'validateKiipuApiKey') {
+			validateKiipuApiKeyRequest()
+				.then(sendResponse)
+				.catch((error) => sendResponse(error));
+			return true;
+		}
+
+		if (typedRequest.action === 'saveToKiipu' && typedRequest.payload) {
+			saveToKiipuRequest(typedRequest.payload, typedRequest.tabId || sender.tab?.id)
+				.then(sendResponse)
+				.catch((error) => sendResponse(error));
+			return true;
 		}
 
 		if (typedRequest.action === "sendMessageToTab") {

@@ -1,7 +1,7 @@
 import browser from './browser-polyfill';
 import { Settings, ModelConfig, PropertyType, HistoryEntry, Provider, Rating } from '../types/types';
 import { debugLog } from './debug';
-import { copyToClipboard } from 'core/popup';
+import { getDefaultKiipuEnvironment, KIIPU_BASE_URLS } from './kiipu';
 
 export type { Settings, ModelConfig, PropertyType, HistoryEntry, Provider, Rating };
 
@@ -31,13 +31,23 @@ export let generalSettings: Settings = {
 	},
 	stats: {
 		addToObsidian: 0,
+		addToKiipu: 0,
 		saveFile: 0,
 		copyToClipboard: 0,
 		share: 0
 	},
 	history: [],
 	ratings: [],
-	saveBehavior: 'addToObsidian'
+	saveBehavior: 'addToObsidian',
+	defaultSaveTarget: 'addToObsidian',
+	kiipu: {
+		environment: getDefaultKiipuEnvironment(),
+		baseUrl: KIIPU_BASE_URLS[getDefaultKiipuEnvironment()],
+		apiKey: '',
+		visibility: 'private',
+		enableTagMapping: true,
+		validateBeforeSave: false
+	}
 };
 
 export function setLocalStorage(key: string, value: any): Promise<void> {
@@ -55,9 +65,11 @@ interface StorageData {
 		legacyMode?: boolean;
 		silentOpen?: boolean;
 		openBehavior?: boolean | 'popup' | 'embedded';
-		saveBehavior?: 'addToObsidian' | 'copyToClipboard' | 'saveFile';
+		saveBehavior?: Settings['saveBehavior'];
+		defaultSaveTarget?: Settings['defaultSaveTarget'];
 	};
 	vaults?: string[];
+	kiipu_settings?: Partial<Settings['kiipu']>;
 	highlighter_settings?: {
 		highlighterEnabled?: boolean;
 		alwaysShowHighlights?: boolean;
@@ -81,6 +93,7 @@ interface StorageData {
 	property_types?: PropertyType[];
 	stats?: {
 		addToObsidian: number;
+		addToKiipu?: number;
 		saveFile: number;
 		copyToClipboard: number;
 		share: number;
@@ -90,7 +103,7 @@ interface StorageData {
 	migrationVersion?: number;
 }
 
-const CURRENT_MIGRATION_VERSION = 1;
+const CURRENT_MIGRATION_VERSION = 2;
 
 export async function loadSettings(): Promise<Settings> {
 	const data = await browser.storage.sync.get(null) as StorageData;
@@ -123,12 +136,22 @@ export async function loadSettings(): Promise<Settings> {
 		},
 		stats: {
 			addToObsidian: 0,
+			addToKiipu: 0,
 			saveFile: 0,
 			copyToClipboard: 0,
 			share: 0
 		},
 		history: [],
 		ratings: [],
+		defaultSaveTarget: 'addToObsidian',
+		kiipu: {
+			environment: getDefaultKiipuEnvironment(),
+			baseUrl: KIIPU_BASE_URLS[getDefaultKiipuEnvironment()],
+			apiKey: '',
+			visibility: 'private',
+			enableTagMapping: true,
+			validateBeforeSave: false
+		}
 	};
 
 	// Update migration version if needed
@@ -136,6 +159,10 @@ export async function loadSettings(): Promise<Settings> {
 		await browser.storage.sync.set({ migrationVersion: CURRENT_MIGRATION_VERSION });
 		debugLog('Settings', `Updated migration version to ${CURRENT_MIGRATION_VERSION}`);
 	}
+
+	const defaultSaveTarget = data.general_settings?.defaultSaveTarget
+		?? data.general_settings?.saveBehavior
+		?? defaultSettings.defaultSaveTarget;
 
 	// Validate and sanitize data to prevent corruption
 	const sanitizedVaults = Array.isArray(data.vaults) ? data.vaults.filter(v => typeof v === 'string') : [];
@@ -145,6 +172,10 @@ export async function loadSettings(): Promise<Settings> {
 	const sanitizedProviders = Array.isArray(data.interpreter_settings?.providers) 
 		? data.interpreter_settings.providers.filter(p => p && typeof p === 'object' && typeof p.id === 'string') 
 		: [];
+	const kiipuEnvironment = data.kiipu_settings?.environment ?? defaultSettings.kiipu.environment;
+	const resolvedKiipuBaseUrl = kiipuEnvironment === 'custom'
+		? (data.kiipu_settings?.baseUrl || defaultSettings.kiipu.baseUrl)
+		: KIIPU_BASE_URLS[kiipuEnvironment];
 
 	// Load user settings
 	const loadedSettings: Settings = {
@@ -173,10 +204,22 @@ export async function loadSettings(): Promise<Settings> {
 			theme: data.reader_settings?.theme as 'default' | 'flexoki' ?? defaultSettings.readerSettings.theme,
 			themeMode: data.reader_settings?.themeMode as 'auto' | 'light' | 'dark' ?? defaultSettings.readerSettings.themeMode
 		},
-		stats: data.stats || defaultSettings.stats,
+		stats: {
+			...defaultSettings.stats,
+			...(data.stats || {})
+		},
 		history: data.history || defaultSettings.history,
 		ratings: data.ratings || defaultSettings.ratings,
-		saveBehavior: data.general_settings?.saveBehavior ?? defaultSettings.saveBehavior
+		saveBehavior: defaultSaveTarget,
+		defaultSaveTarget,
+		kiipu: {
+			environment: kiipuEnvironment,
+			baseUrl: resolvedKiipuBaseUrl,
+			apiKey: data.kiipu_settings?.apiKey || defaultSettings.kiipu.apiKey,
+			visibility: data.kiipu_settings?.visibility || defaultSettings.kiipu.visibility,
+			enableTagMapping: data.kiipu_settings?.enableTagMapping ?? defaultSettings.kiipu.enableTagMapping,
+			validateBeforeSave: data.kiipu_settings?.validateBeforeSave ?? defaultSettings.kiipu.validateBeforeSave
+		}
 	};
 
 	generalSettings = loadedSettings;
@@ -188,6 +231,7 @@ export async function saveSettings(settings?: Partial<Settings>): Promise<void> 
 	if (settings) {
 		generalSettings = { ...generalSettings, ...settings };
 	}
+	generalSettings.saveBehavior = generalSettings.defaultSaveTarget;
 
 	await browser.storage.sync.set({
 		vaults: generalSettings.vaults,
@@ -198,6 +242,15 @@ export async function saveSettings(settings?: Partial<Settings>): Promise<void> 
 			silentOpen: generalSettings.silentOpen,
 			openBehavior: generalSettings.openBehavior,
 			saveBehavior: generalSettings.saveBehavior,
+			defaultSaveTarget: generalSettings.defaultSaveTarget,
+		},
+		kiipu_settings: {
+			environment: generalSettings.kiipu.environment,
+			baseUrl: generalSettings.kiipu.baseUrl,
+			apiKey: generalSettings.kiipu.apiKey,
+			visibility: generalSettings.kiipu.visibility,
+			enableTagMapping: generalSettings.kiipu.enableTagMapping,
+			validateBeforeSave: generalSettings.kiipu.validateBeforeSave
 		},
 		highlighter_settings: {
 			highlighterEnabled: generalSettings.highlighterEnabled,
@@ -234,7 +287,8 @@ export async function incrementStat(
 	vault?: string,
 	path?: string,
 	url?: string,
-	title?: string
+	title?: string,
+	options?: Pick<HistoryEntry, 'target' | 'requestId' | 'postId'>
 ): Promise<void> {
 	const settings = await loadSettings();
 	settings.stats[action]++;
@@ -242,7 +296,7 @@ export async function incrementStat(
 
 	// Add history entry if URL is provided
 	if (url) {
-		await addHistoryEntry(action, url, title, vault, path);
+		await addHistoryEntry(action, url, title, vault, path, options);
 	}
 }
 
@@ -251,7 +305,8 @@ export async function addHistoryEntry(
 	url: string, 
 	title?: string,
 	vault?: string,
-	path?: string
+	path?: string,
+	options?: Pick<HistoryEntry, 'target' | 'requestId' | 'postId'>
 ): Promise<void> {
 	const entry: HistoryEntry = {
 		datetime: new Date().toISOString(),
@@ -259,7 +314,8 @@ export async function addHistoryEntry(
 		action,
 		title,
 		vault,
-		path
+		path,
+		...options
 	};
 
 	// Get existing history from local storage

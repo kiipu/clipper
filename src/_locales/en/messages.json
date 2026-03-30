@@ -20,6 +20,9 @@
 	"addToObsidian": {
 		"message": "Add to Obsidian"
 	},
+	"addToKiipu": {
+		"message": "Save to Kiipu"
+	},
 	"addVaultPlaceholder": {
 		"message": "Press enter to add a vault"
 	},
@@ -146,6 +149,9 @@
 	},
 	"custom": {
 		"message": "Custom"
+	},
+	"development": {
+		"message": "Development"
 	},
 	"dailyNoteFormat": {
 		"message": "Daily note format (e.g., YYYY-MM-DD)"
@@ -318,6 +324,9 @@
 	"failedToSaveFile": {
 		"message": "Failed to save file"
 	},
+	"failedToSaveToKiipu": {
+		"message": "Failed to save to Kiipu"
+	},
 	"failedToSaveProvider": {
 		"message": "Failed to save provider. Please try again."
 	},
@@ -406,6 +415,71 @@
 	},
 	"importTemplate": {
 		"message": "Import template"
+	},
+	"kiipu": {
+		"message": "Kiipu"
+	},
+	"kiipuDescription": {
+		"message": "Configure Kiipu as a save target for clipped pages."
+	},
+	"kiipuEnvironment": {
+		"message": "Environment"
+	},
+	"kiipuEnvironmentDescription": {
+		"message": "Choose the Kiipu API environment used by the extension."
+	},
+	"kiipuBaseUrl": {
+		"message": "Base URL"
+	},
+	"kiipuBaseUrlDescription": {
+		"message": "Only used for the custom Kiipu environment."
+	},
+	"kiipuApiKey": {
+		"message": "API key"
+	},
+	"kiipuApiKeyDescription": {
+		"message": "Use your Kiipu user API key to create posts from the extension."
+	},
+	"kiipuVisibility": {
+		"message": "Visibility"
+	},
+	"kiipuVisibilityDescription": {
+		"message": "Default visibility used when saving clips to Kiipu."
+	},
+	"kiipuEnableTagMapping": {
+		"message": "Map tags from clip metadata"
+	},
+	"kiipuEnableTagMappingDescription": {
+		"message": "Use matching tag properties and variables when sending a clip to Kiipu."
+	},
+	"kiipuValidateBeforeSave": {
+		"message": "Validate API key before save"
+	},
+	"kiipuValidateBeforeSaveDescription": {
+		"message": "Check your Kiipu API key before creating a post."
+	},
+	"kiipuTestConnection": {
+		"message": "Test connection"
+	},
+	"kiipuConnectionSuccess": {
+		"message": "Connected as $1 (@$2, key $3).",
+		"placeholders": {
+			"1": {
+				"content": "$1"
+			},
+			"2": {
+				"content": "$2"
+			},
+			"3": {
+				"content": "$3"
+			}
+		}
+	},
+	"kiipuMissingApiKey": {
+		"message": "Add your Kiipu API key in settings before saving."
+	},
+	"kiipuMissingBaseUrl": {
+		"message": "Set a Kiipu base URL before saving."
 	},
 	"interpret": {
 		"message": "interpret"
@@ -569,6 +643,12 @@
 	},
 	"popup": {
 		"message": "Popup"
+	},
+	"privateVisibility": {
+		"message": "Private"
+	},
+	"production": {
+		"message": "Production"
 	},
 	"prependToDaily": {
 		"message": "Add to daily note, at the top"
@@ -773,6 +853,12 @@
 	},
 	"systemDefault": {
 		"message": "System"
+	},
+	"unlistedVisibility": {
+		"message": "Unlisted"
+	},
+	"publicVisibility": {
+		"message": "Public"
 	},
 	"templateCopied": {
 		"message": "Copied template JSON to clipboard"

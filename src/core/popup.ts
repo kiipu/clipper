@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
-import { Template, Property, PromptVariable } from '../types/types';
-import { incrementStat, addHistoryEntry, getClipHistory } from '../utils/storage-utils';
+import { ClipPayload, SaveBehavior, SaveResult, SaveTarget, Template, Property, PromptVariable } from '../types/types';
+import { incrementStat, getClipHistory } from '../utils/storage-utils';
 import { generateFrontmatter, saveToObsidian } from '../utils/obsidian-note-creator';
 import { extractPageContent, initializePageContent } from '../utils/content-extractor';
 import { compileTemplate } from '../utils/template-compiler';
@@ -23,6 +23,7 @@ import { sanitizeFileName } from '../utils/string-utils';
 import { saveFile } from '../utils/file-utils';
 import { translatePage, getMessage, setupLanguageAndDirection } from '../utils/i18n';
 import { formatPropertyValue } from '../utils/shared';
+import { getKiipuErrorMessage } from '../utils/kiipu';
 
 interface ReaderModeResponse {
 	success: boolean;
@@ -59,6 +60,195 @@ const memoizedGenerateFrontmatter = memoizeWithExpiration(
 	},
 	{ expirationMs: 5000 }
 );
+
+function openOptionsPage(): Promise<void> {
+	return browser.runtime.sendMessage({ action: "openOptionsPage" }).then(() => undefined);
+}
+
+function getDefaultSaveBehavior(): SaveBehavior {
+	return loadedSettings.defaultSaveTarget || loadedSettings.saveBehavior;
+}
+
+function getKiipuConfigurationError(): string | null {
+	const { kiipu } = loadedSettings;
+	if (!kiipu.apiKey.trim()) {
+		return getMessage('kiipuMissingApiKey');
+	}
+	if (kiipu.environment === 'custom' && !kiipu.baseUrl.trim()) {
+		return getMessage('kiipuMissingBaseUrl');
+	}
+	return null;
+}
+
+function collectClipTags(properties: Property[]): string[] {
+	if (!loadedSettings.kiipu.enableTagMapping) {
+		return [];
+	}
+
+	const candidates: string[] = [];
+	for (const property of properties) {
+		if (!['tag', 'tags'].includes(property.name.toLowerCase())) continue;
+		candidates.push(property.value);
+	}
+
+	const variableTags = currentVariables.tags || currentVariables.tag;
+	if (variableTags) {
+		candidates.push(variableTags);
+	}
+
+	return candidates
+		.flatMap(value => value.split(/[\n,#]/g))
+		.map(tag => tag.trim())
+		.filter(Boolean);
+}
+
+function mapSaveBehaviorToTarget(saveBehavior: SaveBehavior): SaveTarget {
+	switch (saveBehavior) {
+		case 'addToKiipu':
+			return 'kiipu';
+		case 'saveFile':
+			return 'file';
+		case 'copyToClipboard':
+			return 'clipboard';
+		default:
+			return 'obsidian';
+	}
+}
+
+async function buildClipPayloadFromCurrentPage(): Promise<ClipPayload & { selectedVault: string }> {
+	if (!currentTemplate) {
+		throw new Error('No active template');
+	}
+
+	const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement;
+	const noteContentField = document.getElementById('note-content-field') as HTMLTextAreaElement;
+	const noteNameField = document.getElementById('note-name-field') as HTMLInputElement;
+	const pathField = document.getElementById('path-name-field') as HTMLInputElement;
+	const interpretBtn = document.getElementById('interpret-btn') as HTMLButtonElement;
+
+	if (!noteContentField) {
+		throw new Error('Some required fields are missing. Please try reloading the extension.');
+	}
+
+	if (generalSettings.interpreterEnabled && interpretBtn && collectPromptVariables(currentTemplate).length > 0) {
+		if (interpretBtn.classList.contains('processing')) {
+			await waitForInterpreter(interpretBtn);
+		} else if (!interpretBtn.classList.contains('done')) {
+			interpretBtn.click();
+			await waitForInterpreter(interpretBtn);
+		}
+	}
+
+	const properties = getPropertiesFromDOM();
+	const frontmatter = await generateFrontmatter(properties);
+	const noteContent = noteContentField.value;
+	const fullContent = frontmatter + noteContent;
+	const tabInfo = await getCurrentTabInfo();
+	const isDailyNote = currentTemplate.behavior === 'append-daily' || currentTemplate.behavior === 'prepend-daily';
+	const selectedVault = currentTemplate.vault || vaultDropdown?.value || '';
+
+	return {
+		title: isDailyNote ? (tabInfo.title || currentVariables.title || 'Untitled') : (noteNameField?.value || tabInfo.title || 'Untitled'),
+		url: tabInfo.url || currentVariables.url || '',
+		rawText: currentVariables.content || noteContent,
+		frontmatter,
+		content: noteContent,
+		fullContent,
+		path: isDailyNote ? '' : (pathField?.value || ''),
+		vault: selectedVault,
+		tags: collectClipTags(properties),
+		createdAt: new Date().toISOString(),
+		templateId: currentTemplate.id,
+		templateName: currentTemplate.name,
+		metadata: {
+			author: currentVariables.author,
+			site: currentVariables.site,
+			published: currentVariables.published,
+			description: currentVariables.description,
+			image: currentVariables.image,
+			favicon: currentVariables.favicon,
+			language: currentVariables.language,
+			wordCount: currentVariables.wordCount,
+			domain: currentVariables.domain
+		},
+		selectedVault
+	};
+}
+
+async function saveWithTarget(target: SaveTarget, payload: ClipPayload & { selectedVault: string }): Promise<void> {
+	switch (target) {
+		case 'clipboard':
+			await copyToClipboard(payload.fullContent);
+			return;
+		case 'file':
+			await saveClipToDownloads(payload);
+			return;
+		case 'obsidian':
+			await saveClipToObsidian(payload);
+			return;
+		case 'kiipu':
+			await saveClipToKiipu(payload);
+			return;
+	}
+}
+
+async function saveClipToObsidian(payload: ClipPayload & { selectedVault: string }): Promise<void> {
+	if (!currentTemplate) return;
+
+	await saveToObsidian(payload.fullContent, payload.title, payload.path, payload.selectedVault, currentTemplate.behavior);
+	const tabInfo = await getCurrentTabInfo();
+	await incrementStat('addToObsidian', payload.selectedVault, payload.path, tabInfo.url, tabInfo.title);
+
+	if (!currentTemplate.vault) {
+		lastSelectedVault = payload.selectedVault;
+		await setLocalStorage('lastSelectedVault', lastSelectedVault);
+	}
+
+	if (!isSidePanel) {
+		setTimeout(() => window.close(), 500);
+	}
+}
+
+async function saveClipToKiipu(payload: ClipPayload & { selectedVault: string }): Promise<void> {
+	const result = await browser.runtime.sendMessage({
+		action: 'saveToKiipu',
+		tabId: currentTabId,
+		payload
+	}) as SaveResult;
+
+	if (!result.ok) {
+		throw new Error(getKiipuErrorMessage(result));
+	}
+
+	const tabInfo = await getCurrentTabInfo();
+	await incrementStat('addToKiipu', payload.selectedVault, payload.path, tabInfo.url, tabInfo.title, {
+		target: 'kiipu',
+		requestId: result.requestId,
+		postId: result.postId
+	});
+
+	if (!isSidePanel) {
+		setTimeout(() => window.close(), 300);
+	}
+}
+
+async function saveClipToDownloads(payload: ClipPayload): Promise<void> {
+	await saveFile({
+		content: payload.fullContent,
+		fileName: payload.title || 'untitled',
+		mimeType: 'text/markdown',
+		tabId: currentTabId,
+		onError: () => showError('failedToSaveFile')
+	});
+
+	const tabInfo = await getCurrentTabInfo();
+	await incrementStat('saveFile', payload.vault, payload.path, tabInfo.url, tabInfo.title);
+
+	const moreDropdown = document.getElementById('more-dropdown');
+	if (moreDropdown) {
+		moreDropdown.classList.remove('show');
+	}
+}
 
 function getPropertiesFromDOM(): Property[] {
 	return Array.from(document.querySelectorAll('.metadata-property input')).map(input => {
@@ -315,7 +505,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 		if (settingsButton) {
 			settingsButton.addEventListener('click', async function() {
 				try {
-					await browser.runtime.sendMessage({ action: "openOptionsPage" });
+					await openOptionsPage();
 					setTimeout(() => window.close(), 50);
 				} catch (error) {
 					console.error('Error opening options page:', error);
@@ -559,9 +749,10 @@ async function initializeUI() {
 function showError(messageKey: string): void {
 	const errorMessage = document.querySelector('.error-message') as HTMLElement;
 	const clipper = document.querySelector('.clipper') as HTMLElement;
+	const translatedMessage = getMessage(messageKey) || messageKey;
 
 	if (errorMessage && clipper) {
-		errorMessage.textContent = getMessage(messageKey);
+		errorMessage.textContent = translatedMessage;
 		errorMessage.style.display = 'flex';
 		clipper.style.display = 'none';
 
@@ -1157,35 +1348,8 @@ export async function copyToClipboard(content: string) {
 
 async function handleSaveToDownloads() {
 	try {
-		const noteNameField = document.getElementById('note-name-field') as HTMLInputElement;
-		const pathField = document.getElementById('path-name-field') as HTMLInputElement;
-		const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement;
-		
-		let fileName = noteNameField?.value || 'untitled';
-		const path = pathField?.value || '';
-		const vault = vaultDropdown?.value || '';
-		
-		const properties = getPropertiesFromDOM();
-
-		const noteContentField = document.getElementById('note-content-field') as HTMLTextAreaElement;
-		const frontmatter = await generateFrontmatter(properties);
-		const fileContent = frontmatter + noteContentField.value;
-
-		await saveFile({
-			content: fileContent,
-			fileName,
-			mimeType: 'text/markdown',
-			tabId: currentTabId,
-			onError: (error) => showError('failedToSaveFile')
-		});
-
-		const tabInfo = await getCurrentTabInfo();
-		await incrementStat('saveFile', vault, path, tabInfo.url, tabInfo.title);
-
-		const moreDropdown = document.getElementById('more-dropdown');
-		if (moreDropdown) {
-			moreDropdown.classList.remove('show');
-		}
+		const payload = await buildClipPayloadFromCurrentPage();
+		await saveClipToDownloads(payload);
 	} catch (error) {
 		console.error('Failed to save file:', error);
 		showError('failedToSaveFile');
@@ -1193,21 +1357,51 @@ async function handleSaveToDownloads() {
 }
 
 function determineMainAction() {
-	const mainButton = document.getElementById('clip-btn');
+	const mainButton = document.getElementById('clip-btn') as HTMLButtonElement | null;
 	const moreDropdown = document.getElementById('more-dropdown');
 	const secondaryActions = moreDropdown?.querySelector('.secondary-actions');
 	if (!mainButton || !secondaryActions) return;
+	const defaultSaveBehavior = getDefaultSaveBehavior();
+	const kiipuConfigurationError = getKiipuConfigurationError();
 
 	// Clear existing secondary actions
 	secondaryActions.textContent = '';
+	mainButton.disabled = false;
+	mainButton.onclick = null;
 
 	// Set up actions based on saved behavior
-	switch (loadedSettings.saveBehavior) {
+	switch (defaultSaveBehavior) {
+		case 'addToKiipu':
+			mainButton.textContent = getMessage('addToKiipu');
+			if (kiipuConfigurationError) {
+				mainButton.disabled = true;
+				addSecondaryAction(secondaryActions, 'settings', async () => {
+					await openOptionsPage();
+				});
+			} else {
+				mainButton.onclick = async () => {
+					try {
+						const payload = await buildClipPayloadFromCurrentPage();
+						await saveWithTarget('kiipu', payload);
+					} catch (error) {
+						console.error('Error in handleClipKiipu:', error);
+						showError(error instanceof Error ? error.message : 'failedToSaveToKiipu');
+					}
+				};
+			}
+			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
+			addSecondaryAction(secondaryActions, 'copyToClipboard', copyContent);
+			addSecondaryAction(secondaryActions, 'saveFile', handleSaveToDownloads);
+			break;
 		case 'copyToClipboard':
 			mainButton.textContent = getMessage('copyToClipboard');
 			mainButton.onclick = () => copyContent();
 			// Add direct actions to secondary
 			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
+			addSecondaryAction(secondaryActions, 'addToKiipu', async () => {
+				const payload = await buildClipPayloadFromCurrentPage();
+				await saveWithTarget('kiipu', payload);
+			});
 			addSecondaryAction(secondaryActions, 'saveFile', handleSaveToDownloads);
 			break;
 		case 'saveFile':
@@ -1215,66 +1409,29 @@ function determineMainAction() {
 			mainButton.onclick = () => handleSaveToDownloads();
 			// Add direct actions to secondary
 			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
+			addSecondaryAction(secondaryActions, 'addToKiipu', async () => {
+				const payload = await buildClipPayloadFromCurrentPage();
+				await saveWithTarget('kiipu', payload);
+			});
 			addSecondaryAction(secondaryActions, 'copyToClipboard', copyContent);
 			break;
 		default: // 'addToObsidian'
 			mainButton.textContent = getMessage('addToObsidian');
 			mainButton.onclick = () => handleClipObsidian();
 			// Add direct actions to secondary
+			addSecondaryAction(secondaryActions, 'addToKiipu', async () => {
+				const payload = await buildClipPayloadFromCurrentPage();
+				await saveWithTarget('kiipu', payload);
+			});
 			addSecondaryAction(secondaryActions, 'copyToClipboard', copyContent);
 			addSecondaryAction(secondaryActions, 'saveFile', handleSaveToDownloads);
 	}
 }
 
 async function handleClipObsidian(): Promise<void> {
-	if (!currentTemplate) return;
-
-	const vaultDropdown = document.getElementById('vault-select') as HTMLSelectElement;
-	const noteContentField = document.getElementById('note-content-field') as HTMLTextAreaElement;
-	const noteNameField = document.getElementById('note-name-field') as HTMLInputElement;
-	const pathField = document.getElementById('path-name-field') as HTMLInputElement;
-	const interpretBtn = document.getElementById('interpret-btn') as HTMLButtonElement;
-
-	if (!vaultDropdown || !noteContentField) {
-		showError('Some required fields are missing. Please try reloading the extension.');
-		return;
-	}
-
 	try {
-		// Handle interpreter if needed
-		if (generalSettings.interpreterEnabled && interpretBtn && collectPromptVariables(currentTemplate).length > 0) {
-			if (interpretBtn.classList.contains('processing')) {
-				await waitForInterpreter(interpretBtn);
-			} else if (!interpretBtn.classList.contains('done')) {
-				interpretBtn.click();
-				await waitForInterpreter(interpretBtn);
-			}
-		}
-
-		// Gather content
-		const properties = getPropertiesFromDOM();
-
-		const frontmatter = await generateFrontmatter(properties);
-		const fileContent = frontmatter + noteContentField.value;
-
-		// Save to Obsidian
-		const selectedVault = currentTemplate.vault || vaultDropdown.value;
-		const isDailyNote = currentTemplate.behavior === 'append-daily' || currentTemplate.behavior === 'prepend-daily';
-		const noteName = isDailyNote ? '' : noteNameField?.value || '';
-		const path = isDailyNote ? '' : pathField?.value || '';
-
-		await saveToObsidian(fileContent, noteName, path, selectedVault, currentTemplate.behavior);
-		const tabInfo = await getCurrentTabInfo();
-		await incrementStat('addToObsidian', selectedVault, path, tabInfo.url, tabInfo.title);
-
-		if (!currentTemplate.vault) {
-			lastSelectedVault = selectedVault;
-			await setLocalStorage('lastSelectedVault', lastSelectedVault);
-		}
-
-		if (!isSidePanel) {
-			setTimeout(() => window.close(), 500);
-		}
+		const payload = await buildClipPayloadFromCurrentPage();
+		await saveWithTarget('obsidian', payload);
 	} catch (error) {
 		console.error('Error in handleClipObsidian:', error);
 		showError('failedToSaveFile');
@@ -1282,7 +1439,7 @@ async function handleClipObsidian(): Promise<void> {
 	}
 }
 
-function addSecondaryAction(container: Element, actionType: string, handler: () => void) {
+function addSecondaryAction(container: Element, actionType: string, handler: () => void | Promise<void>) {
 	const menuItem = document.createElement('div');
 	menuItem.className = 'menu-item';
 	
@@ -1304,7 +1461,12 @@ function addSecondaryAction(container: Element, actionType: string, handler: () 
 	menuItem.appendChild(menuItemIcon);
 	menuItem.appendChild(menuItemTitle);
 	
-	menuItem.addEventListener('click', handler);
+	menuItem.addEventListener('click', () => {
+		Promise.resolve(handler()).catch((error) => {
+			console.error(`Error executing secondary action ${actionType}:`, error);
+			showError(error instanceof Error ? error.message : 'failedToSaveFile');
+		});
+	});
 	container.appendChild(menuItem);
 	initializeIcons(menuItem);
 }
@@ -1314,6 +1476,8 @@ function getActionIcon(actionType: string): string {
 		case 'copyToClipboard': return 'copy';
 		case 'saveFile': return 'file-down';
 		case 'addToObsidian': return 'pen-line';
+		case 'addToKiipu': return 'cloud-upload';
+		case 'settings': return 'settings';
 		default: return 'plus';
 	}
 }

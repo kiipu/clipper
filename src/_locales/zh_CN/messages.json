@@ -20,6 +20,9 @@
 	"addToObsidian": {
 		"message": "添加到 Obsidian"
 	},
+	"addToKiipu": {
+		"message": "保存到 Kiipu"
+	},
 	"addVaultPlaceholder": {
 		"message": "按回车键添加保管库"
 	},
@@ -146,6 +149,9 @@
 	},
 	"custom": {
 		"message": "自定义"
+	},
+	"development": {
+		"message": "开发环境"
 	},
 	"dailyNoteFormat": {
 		"message": "日记格式（如：YYYY-MM-DD）"
@@ -318,6 +324,9 @@
 	"failedToSaveFile": {
 		"message": "保存文件失败"
 	},
+	"failedToSaveToKiipu": {
+		"message": "保存到 Kiipu 失败"
+	},
 	"failedToSaveProvider": {
 		"message": "无法保存提供商。请再试一次。"
 	},
@@ -406,6 +415,71 @@
 	},
 	"importTemplate": {
 		"message": "导入模板"
+	},
+	"kiipu": {
+		"message": "Kiipu"
+	},
+	"kiipuDescription": {
+		"message": "将 Kiipu 配置为网页剪藏的保存目标。"
+	},
+	"kiipuEnvironment": {
+		"message": "环境"
+	},
+	"kiipuEnvironmentDescription": {
+		"message": "选择扩展使用的 Kiipu API 环境。"
+	},
+	"kiipuBaseUrl": {
+		"message": "基础 URL"
+	},
+	"kiipuBaseUrlDescription": {
+		"message": "仅在选择自定义环境时使用。"
+	},
+	"kiipuApiKey": {
+		"message": "API 密钥"
+	},
+	"kiipuApiKeyDescription": {
+		"message": "使用你的 Kiipu 用户 API 密钥来创建帖子。"
+	},
+	"kiipuVisibility": {
+		"message": "可见性"
+	},
+	"kiipuVisibilityDescription": {
+		"message": "保存到 Kiipu 时使用的默认可见性。"
+	},
+	"kiipuEnableTagMapping": {
+		"message": "从剪藏元数据映射标签"
+	},
+	"kiipuEnableTagMappingDescription": {
+		"message": "发送到 Kiipu 时，使用匹配的标签属性和变量。"
+	},
+	"kiipuValidateBeforeSave": {
+		"message": "保存前验证 API 密钥"
+	},
+	"kiipuValidateBeforeSaveDescription": {
+		"message": "在创建帖子前先检查你的 Kiipu API 密钥。"
+	},
+	"kiipuTestConnection": {
+		"message": "测试连接"
+	},
+	"kiipuConnectionSuccess": {
+		"message": "已连接到 $1（@$2，密钥前缀 $3）。",
+		"placeholders": {
+			"1": {
+				"content": "$1"
+			},
+			"2": {
+				"content": "$2"
+			},
+			"3": {
+				"content": "$3"
+			}
+		}
+	},
+	"kiipuMissingApiKey": {
+		"message": "请先在设置中填写 Kiipu API 密钥。"
+	},
+	"kiipuMissingBaseUrl": {
+		"message": "请先设置 Kiipu 基础 URL。"
 	},
 	"interpret": {
 		"message": "解释"
@@ -569,6 +643,12 @@
 	},
 	"popup": {
 		"message": "弹出窗口"
+	},
+	"privateVisibility": {
+		"message": "私有"
+	},
+	"production": {
+		"message": "生产环境"
 	},
 	"prependToDaily": {
 		"message": "添加到日记开头"
@@ -773,6 +853,12 @@
 	},
 	"systemDefault": {
 		"message": "系统默认"
+	},
+	"unlistedVisibility": {
+		"message": "不公开列出"
+	},
+	"publicVisibility": {
+		"message": "公开"
 	},
 	"templateCopied": {
 		"message": "已将模板 JSON 复制到剪贴板"

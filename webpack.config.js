@@ -165,7 +165,8 @@ module.exports = (env, argv) => {
 			},
 			new webpack.DefinePlugin({
 				'process.env.NODE_ENV': JSON.stringify(argv.mode),
-				'DEBUG_MODE': JSON.stringify(!isProduction)
+				'DEBUG_MODE': JSON.stringify(!isProduction),
+				'__KIIPU_DEFAULT_ENV__': JSON.stringify(isProduction ? 'production' : 'development')
 			}),
 			...(isProduction ? [
 				new ZipPlugin({

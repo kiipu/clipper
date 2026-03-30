@@ -32,6 +32,7 @@ export const generalSettings: Settings = {
 	},
 	stats: {
 		addToObsidian: 0,
+		addToKiipu: 0,
 		saveFile: 0,
 		copyToClipboard: 0,
 		share: 0,
@@ -39,6 +40,15 @@ export const generalSettings: Settings = {
 	history: [],
 	ratings: [],
 	saveBehavior: 'addToObsidian',
+	defaultSaveTarget: 'addToObsidian',
+	kiipu: {
+		environment: 'production',
+		baseUrl: 'https://api.kiipu.com',
+		apiKey: '',
+		visibility: 'private',
+		enableTagMapping: true,
+		validateBeforeSave: false,
+	},
 };
 
 export const loadSettings = async () => {};

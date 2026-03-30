@@ -18,6 +18,7 @@ import { getClipHistory } from '../utils/storage-utils';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import { showModal, hideModal } from '../utils/modal-utils';
+import { KIIPU_BASE_URLS } from '../utils/kiipu';
 
 dayjs.extend(weekOfYear);
 
@@ -227,6 +228,7 @@ export function initializeGeneralSettings(): void {
 		initializeHighlighterSettings();
 		initializeExportHighlightsButton();
 		initializeSaveBehaviorDropdown();
+		initializeKiipuSettings();
 		await initializeUsageChart();
 
 		// Initialize feedback modal close button
@@ -256,6 +258,18 @@ function saveSettingsFromForm(): void {
 	const highlighterToggle = document.getElementById('highlighter-toggle') as HTMLInputElement;
 	const alwaysShowHighlightsToggle = document.getElementById('highlighter-visibility') as HTMLInputElement;
 	const highlightBehaviorSelect = document.getElementById('highlighter-behavior') as HTMLSelectElement;
+	const saveBehaviorDropdown = document.getElementById('save-behavior-dropdown') as HTMLSelectElement;
+	const kiipuEnvironmentDropdown = document.getElementById('kiipu-environment-dropdown') as HTMLSelectElement;
+	const kiipuBaseUrlInput = document.getElementById('kiipu-base-url') as HTMLInputElement;
+	const kiipuApiKeyInput = document.getElementById('kiipu-api-key') as HTMLInputElement;
+	const kiipuVisibilityDropdown = document.getElementById('kiipu-visibility-dropdown') as HTMLSelectElement;
+	const kiipuTagMappingToggle = document.getElementById('kiipu-tag-mapping-toggle') as HTMLInputElement;
+	const kiipuValidateBeforeSaveToggle = document.getElementById('kiipu-validate-before-save-toggle') as HTMLInputElement;
+	const kiipuEnvironment = (kiipuEnvironmentDropdown?.value as typeof generalSettings.kiipu.environment) || generalSettings.kiipu.environment;
+	const kiipuBaseUrl = kiipuEnvironment === 'custom'
+		? (kiipuBaseUrlInput?.value ?? generalSettings.kiipu.baseUrl)
+		: KIIPU_BASE_URLS[kiipuEnvironment];
+	const defaultSaveTarget = (saveBehaviorDropdown?.value as typeof generalSettings.defaultSaveTarget) ?? generalSettings.defaultSaveTarget;
 
 	const updatedSettings = {
 		...generalSettings, // Keep existing settings
@@ -266,7 +280,17 @@ function saveSettingsFromForm(): void {
 		silentOpen: silentOpenToggle?.checked ?? generalSettings.silentOpen,
 		highlighterEnabled: highlighterToggle?.checked ?? generalSettings.highlighterEnabled,
 		alwaysShowHighlights: alwaysShowHighlightsToggle?.checked ?? generalSettings.alwaysShowHighlights,
-		highlightBehavior: highlightBehaviorSelect?.value ?? generalSettings.highlightBehavior
+		highlightBehavior: highlightBehaviorSelect?.value ?? generalSettings.highlightBehavior,
+		saveBehavior: defaultSaveTarget,
+		defaultSaveTarget,
+		kiipu: {
+			environment: kiipuEnvironment,
+			baseUrl: kiipuBaseUrl,
+			apiKey: kiipuApiKeyInput?.value ?? generalSettings.kiipu.apiKey,
+			visibility: (kiipuVisibilityDropdown?.value as typeof generalSettings.kiipu.visibility) ?? generalSettings.kiipu.visibility,
+			enableTagMapping: kiipuTagMappingToggle?.checked ?? generalSettings.kiipu.enableTagMapping,
+			validateBeforeSave: kiipuValidateBeforeSaveToggle?.checked ?? generalSettings.kiipu.validateBeforeSave
+		}
 	};
 
 	saveSettings(updatedSettings);
@@ -365,11 +389,82 @@ function initializeSaveBehaviorDropdown(): void {
     const dropdown = document.getElementById('save-behavior-dropdown') as HTMLSelectElement;
     if (!dropdown) return;
 
-    dropdown.value = generalSettings.saveBehavior;
+    dropdown.value = generalSettings.defaultSaveTarget;
     dropdown.addEventListener('change', () => {
-        const newValue = dropdown.value as 'addToObsidian' | 'copyToClipboard' | 'saveFile';
-        saveSettings({ saveBehavior: newValue });
+        const newValue = dropdown.value as 'addToObsidian' | 'addToKiipu' | 'copyToClipboard' | 'saveFile';
+        saveSettings({ saveBehavior: newValue, defaultSaveTarget: newValue });
     });
+}
+
+function updateKiipuBaseUrlUI(): void {
+	const environmentDropdown = document.getElementById('kiipu-environment-dropdown') as HTMLSelectElement;
+	const baseUrlInput = document.getElementById('kiipu-base-url') as HTMLInputElement;
+	const baseUrlRow = document.getElementById('kiipu-base-url-row') as HTMLElement;
+	if (!environmentDropdown || !baseUrlInput || !baseUrlRow) return;
+
+	const environment = environmentDropdown.value as typeof generalSettings.kiipu.environment;
+	const isCustom = environment === 'custom';
+	baseUrlRow.style.display = isCustom ? 'flex' : 'none';
+	baseUrlInput.disabled = !isCustom;
+	if (!isCustom) {
+		baseUrlInput.value = KIIPU_BASE_URLS[environment as 'production' | 'development'];
+	}
+}
+
+function initializeKiipuSettings(): void {
+	const environmentDropdown = document.getElementById('kiipu-environment-dropdown') as HTMLSelectElement;
+	const baseUrlInput = document.getElementById('kiipu-base-url') as HTMLInputElement;
+	const apiKeyInput = document.getElementById('kiipu-api-key') as HTMLInputElement;
+	const visibilityDropdown = document.getElementById('kiipu-visibility-dropdown') as HTMLSelectElement;
+	const tagMappingToggle = document.getElementById('kiipu-tag-mapping-toggle') as HTMLInputElement;
+	const validateBeforeSaveToggle = document.getElementById('kiipu-validate-before-save-toggle') as HTMLInputElement;
+	const testConnectionButton = document.getElementById('kiipu-test-connection-btn') as HTMLButtonElement;
+	const testResult = document.getElementById('kiipu-test-result') as HTMLElement;
+
+	if (!environmentDropdown || !baseUrlInput || !apiKeyInput || !visibilityDropdown || !tagMappingToggle || !validateBeforeSaveToggle || !testConnectionButton || !testResult) {
+		return;
+	}
+
+	environmentDropdown.value = generalSettings.kiipu.environment;
+	baseUrlInput.value = generalSettings.kiipu.baseUrl;
+	apiKeyInput.value = generalSettings.kiipu.apiKey;
+	visibilityDropdown.value = generalSettings.kiipu.visibility;
+	tagMappingToggle.checked = generalSettings.kiipu.enableTagMapping;
+	validateBeforeSaveToggle.checked = generalSettings.kiipu.validateBeforeSave;
+	updateKiipuBaseUrlUI();
+
+	environmentDropdown.addEventListener('change', updateKiipuBaseUrlUI);
+	testConnectionButton.addEventListener('click', async () => {
+		testResult.textContent = '';
+		testConnectionButton.disabled = true;
+		try {
+			await saveSettingsFromForm();
+			const response = await browser.runtime.sendMessage({ action: 'validateKiipuApiKey' }) as {
+				ok: boolean;
+				errorCode?: string;
+				errorMessage?: string;
+				user?: {
+					displayName: string;
+					username: string;
+					keyPrefix: string;
+				};
+			};
+
+			if (response.ok && response.user) {
+				testResult.textContent = getMessage('kiipuConnectionSuccess', [
+					response.user.displayName || response.user.username,
+					response.user.username,
+					response.user.keyPrefix
+				]);
+			} else {
+				testResult.textContent = response.errorMessage || getMessage('failedToSaveToKiipu');
+			}
+		} catch (error) {
+			testResult.textContent = error instanceof Error ? error.message : getMessage('failedToSaveToKiipu');
+		} finally {
+			testConnectionButton.disabled = false;
+		}
+	});
 }
 
 export function resetDefaultTemplate(): void {

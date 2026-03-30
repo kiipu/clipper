@@ -50,7 +50,19 @@ export interface Rating {
 	date: string;
 }
 
-export type SaveBehavior = 'addToObsidian' | 'saveFile' | 'copyToClipboard';
+export type SaveBehavior = 'addToObsidian' | 'addToKiipu' | 'saveFile' | 'copyToClipboard';
+export type SaveTarget = 'obsidian' | 'kiipu' | 'file' | 'clipboard';
+export type KiipuEnvironment = 'production' | 'development' | 'custom';
+export type KiipuVisibility = 'public' | 'unlisted' | 'private';
+
+export interface KiipuSettings {
+	environment: KiipuEnvironment;
+	baseUrl: string;
+	apiKey: string;
+	visibility: KiipuVisibility;
+	enableTagMapping: boolean;
+	validateBeforeSave: boolean;
+}
 
 export interface ReaderSettings {
 	fontSize: number;
@@ -80,13 +92,16 @@ export interface Settings {
 	readerSettings: ReaderSettings;
 	stats: {
 		addToObsidian: number;
+		addToKiipu: number;
 		saveFile: number;
 		copyToClipboard: number;
 		share: number;
 	};
 	history: HistoryEntry[];
 	ratings: Rating[];
-	saveBehavior: 'addToObsidian' | 'saveFile' | 'copyToClipboard';
+	saveBehavior: SaveBehavior;
+	defaultSaveTarget: SaveBehavior;
+	kiipu: KiipuSettings;
 }
 
 export interface ModelConfig {
@@ -100,10 +115,13 @@ export interface ModelConfig {
 export interface HistoryEntry {
 	datetime: string;
 	url: string;
-	action: 'addToObsidian' | 'saveFile' | 'copyToClipboard' | 'share';
+	action: 'addToObsidian' | 'addToKiipu' | 'saveFile' | 'copyToClipboard' | 'share';
 	title?: string;
 	vault?: string;
 	path?: string;
+	target?: SaveTarget;
+	requestId?: string;
+	postId?: string;
 }
 
 export interface ConversationMessage {
@@ -126,4 +144,70 @@ export interface ConversationMetadata {
 export interface Footnote {
 	url: string;
 	text: string;
+}
+
+export interface ClipPayload {
+	title: string;
+	url: string;
+	rawText: string;
+	frontmatter: string;
+	content: string;
+	fullContent: string;
+	path: string;
+	vault?: string;
+	tags?: string[];
+	createdAt: string;
+	templateId?: string;
+	templateName?: string;
+	metadata: Record<string, unknown>;
+}
+
+export interface KiipuCreatePostRequest {
+	requestId: string;
+	traceId?: string;
+	requestedAt: string;
+	rawText: string;
+	finalText?: string;
+	sourceType: 'skill_command' | 'manual' | 'imported';
+	visibility: KiipuVisibility;
+	title?: string | null;
+	tags?: string[];
+	sourceMessageId?: string;
+}
+
+export interface KiipuCreatePostResponse {
+	ok: boolean;
+	requestId: string;
+	data: {
+		id: string;
+		userId: string;
+		sourceType: string;
+		rawText: string;
+		finalText: string;
+		title?: string | null;
+		visibility: KiipuVisibility;
+		status: string;
+		tags?: { tagName: string }[];
+		createdAt: string;
+		updatedAt: string;
+	};
+}
+
+export interface KiipuValidateKeyResponse {
+	success: boolean;
+	data: {
+		userId: string;
+		username: string;
+		displayName: string;
+		keyPrefix: string;
+	};
+}
+
+export interface SaveResult {
+	ok: boolean;
+	requestId?: string;
+	postId?: string;
+	createdAt?: string;
+	errorCode?: string;
+	errorMessage?: string;
 }

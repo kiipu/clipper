@@ -18,7 +18,9 @@
 	"host_permissions": [
 		"<all_urls>",
 		"http://*/*",
-		"https://*/*"
+		"https://*/*",
+		"https://api.kiipu.com/*",
+		"http://localhost:8787/*"
 	],
 	"action": {
 		"default_popup": "popup.html"
