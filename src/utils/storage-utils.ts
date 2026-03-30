@@ -38,8 +38,8 @@ export let generalSettings: Settings = {
 	},
 	history: [],
 	ratings: [],
-	saveBehavior: 'addToObsidian',
-	defaultSaveTarget: 'addToObsidian',
+	saveBehavior: 'addToKiipu',
+	defaultSaveTarget: 'addToKiipu',
 	kiipu: {
 		environment: getDefaultKiipuEnvironment(),
 		baseUrl: KIIPU_BASE_URLS[getDefaultKiipuEnvironment()],
@@ -126,7 +126,7 @@ export async function loadSettings(): Promise<Settings> {
 		interpreterAutoRun: false,
 		defaultPromptContext: '',
 		propertyTypes: [],
-		saveBehavior: 'addToObsidian',
+		saveBehavior: 'addToKiipu',
 		readerSettings: {
 			fontSize: 1.5,
 			lineHeight: 1.6,
@@ -143,7 +143,7 @@ export async function loadSettings(): Promise<Settings> {
 		},
 		history: [],
 		ratings: [],
-		defaultSaveTarget: 'addToObsidian',
+		defaultSaveTarget: 'addToKiipu',
 		kiipu: {
 			environment: getDefaultKiipuEnvironment(),
 			baseUrl: KIIPU_BASE_URLS[getDefaultKiipuEnvironment()],

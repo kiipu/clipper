@@ -102,19 +102,6 @@ function collectClipTags(properties: Property[]): string[] {
 		.filter(Boolean);
 }
 
-function mapSaveBehaviorToTarget(saveBehavior: SaveBehavior): SaveTarget {
-	switch (saveBehavior) {
-		case 'addToKiipu':
-			return 'kiipu';
-		case 'saveFile':
-			return 'file';
-		case 'copyToClipboard':
-			return 'clipboard';
-		default:
-			return 'obsidian';
-	}
-}
-
 async function buildClipPayloadFromCurrentPage(): Promise<ClipPayload & { selectedVault: string }> {
 	if (!currentTemplate) {
 		throw new Error('No active template');
@@ -1415,14 +1402,18 @@ function determineMainAction() {
 			});
 			addSecondaryAction(secondaryActions, 'copyToClipboard', copyContent);
 			break;
-		default: // 'addToObsidian'
-			mainButton.textContent = getMessage('addToObsidian');
-			mainButton.onclick = () => handleClipObsidian();
-			// Add direct actions to secondary
-			addSecondaryAction(secondaryActions, 'addToKiipu', async () => {
-				const payload = await buildClipPayloadFromCurrentPage();
-				await saveWithTarget('kiipu', payload);
-			});
+		default:
+			mainButton.textContent = getMessage('addToKiipu');
+			mainButton.onclick = async () => {
+				try {
+					const payload = await buildClipPayloadFromCurrentPage();
+					await saveWithTarget('kiipu', payload);
+				} catch (error) {
+					console.error('Error in handleClipKiipu:', error);
+					showError(error instanceof Error ? error.message : 'failedToSaveToKiipu');
+				}
+			};
+			addSecondaryAction(secondaryActions, 'addToObsidian', () => handleClipObsidian());
 			addSecondaryAction(secondaryActions, 'copyToClipboard', copyContent);
 			addSecondaryAction(secondaryActions, 'saveFile', handleSaveToDownloads);
 	}

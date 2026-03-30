@@ -39,8 +39,8 @@ export const generalSettings: Settings = {
 	},
 	history: [],
 	ratings: [],
-	saveBehavior: 'addToObsidian',
-	defaultSaveTarget: 'addToObsidian',
+	saveBehavior: 'addToKiipu',
+	defaultSaveTarget: 'addToKiipu',
 	kiipu: {
 		environment: 'production',
 		baseUrl: 'https://api.kiipu.com',
