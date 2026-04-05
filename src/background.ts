@@ -164,7 +164,7 @@ async function saveToKiipuRequest(payload: ClipPayload, tabId?: number): Promise
 
 	try {
 		const requestBody = mapClipPayloadToKiipuRequest(payload, settings.kiipu, { tabId });
-		const response = await fetchKiipuJson<KiipuCreatePostResponse>(`${baseUrl}/skill/posts`, {
+		const response = await fetchKiipuJson<KiipuCreatePostResponse>(`${baseUrl}/integrations/posts`, {
 			method: 'POST',
 			headers: {
 				'Authorization': `Bearer ${apiKey}`,

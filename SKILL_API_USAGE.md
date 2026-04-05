@@ -7,7 +7,7 @@ This document describes the API that external tools can use to quickly save cont
 External tools should use the skill-facing API:
 
 - Base URL (production): `https://api.kiipu.com`
-- Primary save endpoint: `POST /skill/posts`
+- Primary save endpoint: `POST /integrations/posts`
 - Authentication: `Authorization: Bearer <API_KEY>`
 - Content type: `application/json`
 
@@ -54,7 +54,7 @@ Success example:
 ## Create Post
 
 - Method: `POST`
-- Path: `/skill/posts`
+- Path: `/integrations/posts`
 
 ### Request Body
 
@@ -117,7 +117,7 @@ Success example:
 ### cURL Example
 
 ```bash
-curl -X POST "https://api.kiipu.com/skill/posts" \
+curl -X POST "https://api.kiipu.com/integrations/posts" \
   -H "Authorization: Bearer cpk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -136,7 +136,7 @@ curl -X POST "https://api.kiipu.com/skill/posts" \
 External tools can soft-delete a post.
 
 - Method: `POST`
-- Path: `/skill/posts/:id/delete`
+- Path: `/integrations/posts/:id/delete`
 
 Request body:
 
@@ -153,7 +153,7 @@ Notes:
 
 - The path id must be the target post id.
 - The body also includes `postId`; it should match the path id.
-- The API also supports `DELETE /skill/posts/:id`, but `POST /skill/posts/:id/delete` is the easiest option for external tools that prefer JSON-only workflows.
+- The API also supports `DELETE /integrations/posts/:id`, but `POST /integrations/posts/:id/delete` is the easiest option for external tools that prefer JSON-only workflows.
 
 Success response:
 
@@ -171,7 +171,7 @@ Success response:
 ## Restore Post
 
 - Method: `POST`
-- Path: `/skill/posts/:id/restore`
+- Path: `/integrations/posts/:id/restore`
 
 Request body:
 
@@ -200,7 +200,7 @@ Success response:
 ## Permanently Delete Post
 
 - Method: `POST`
-- Path: `/skill/posts/:id/permanent-delete`
+- Path: `/integrations/posts/:id/permanent-delete`
 
 Request body:
 
@@ -265,7 +265,7 @@ Example error response:
 If an external tool only needs a minimal quick-save flow, this is enough:
 
 1. Ask the user for a Kiipu API key.
-2. Send `POST https://api.kiipu.com/skill/posts`.
+2. Send `POST https://api.kiipu.com/integrations/posts`.
 3. Include `Authorization: Bearer <API_KEY>`.
 4. Send JSON with:
    - `requestId`
