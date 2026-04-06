@@ -16,7 +16,7 @@ import { initializeInterpreter, handleInterpreterUI, collectPromptVariables } fr
 import { adjustNoteNameHeight } from '../utils/ui-utils';
 import { debugLog } from '../utils/debug';
 import { showVariables, initializeVariablesPanel, updateVariablesPanel } from '../managers/inspect-variables';
-import { isBlankPage, isValidUrl } from '../utils/active-tab-manager';
+import { isBlankPage, isValidUrl, isRestrictedUrl } from '../utils/active-tab-manager';
 import { memoizeWithExpiration } from '../utils/memoize';
 import { debounce } from '../utils/debounce';
 import { sanitizeFileName } from '../utils/string-utils';
@@ -345,6 +345,10 @@ async function initializeExtension(tabId: number) {
 			showError('onlyHttpSupported');
 			return;
 		}
+		if (isRestrictedUrl(tab.url)) {
+			showError('pageCannotBeClipped');
+			return;
+		}
 
 		// Setup message listeners
 		setupMessageListeners();
@@ -379,14 +383,16 @@ function setupMessageListeners() {
 			// Only handle active tab changes if we're in side panel mode, not iframe mode
 			if (!isIframe) {
 				currentTabId = request.tabId;
-				if (request.isValidUrl) {
+				if (request.isRestrictedUrl) {
+					showError('pageCannotBeClipped');
+				} else if (request.isValidUrl) {
 					if (currentTabId !== undefined) {
 						refreshFields(currentTabId); // Force template check when URL changes
 					}
 				} else if (request.isBlankPage) {
-					showError(getMessage('pageCannotBeClipped'));
+					showError('pageCannotBeClipped');
 				} else {
-					showError(getMessage('onlyHttpSupported'));
+					showError('onlyHttpSupported');
 				}
 			}
 		} else if (request.action === "highlightsUpdated") {
@@ -767,6 +773,10 @@ async function refreshFields(tabId: number, checkTemplateTriggers: boolean = tru
 		}
 		if (!isValidUrl(tab.url)) {
 			showError('onlyHttpSupported');
+			return;
+		}
+		if (isRestrictedUrl(tab.url)) {
+			showError('pageCannotBeClipped');
 			return;
 		}
 

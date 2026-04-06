@@ -223,8 +223,7 @@ async function ensureContentScriptLoadedInBackground(tabId: number): Promise<voi
 
 		// Check if the URL is valid before proceeding
 		if (!tab.url || !isValidUrl(tab.url)) {
-			console.log(`Skipping content script injection for invalid URL: ${tab.url}`);
-			throw new Error(`Cannot inject content script into invalid URL: ${tab.url}`);
+			throw new Error('Invalid URL for content script injection');
 		}
 
 		// Attempt to send a message to the content script
@@ -301,6 +300,7 @@ browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime
 			hasHighlights?: boolean;
 			tabId?: number;
 			text?: string;
+			section?: string;
 			payload?: ClipPayload;
 		};
 		
@@ -506,6 +506,45 @@ browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime
 			return true;
 		}
 
+		if (typedRequest.action === "openSettings") {
+			try {
+				const section = typedRequest.section ? `?section=${typedRequest.section}` : '';
+				browser.tabs.create({
+					url: browser.runtime.getURL(`settings.html${section}`)
+				});
+				sendResponse({success: true});
+			} catch (error) {
+				console.error('Error opening settings:', error);
+				sendResponse({success: false, error: error instanceof Error ? error.message : String(error)});
+			}
+			return true;
+		}
+
+		if (typedRequest.action === "openPopup") {
+			try {
+				browser.action.openPopup();
+				sendResponse({success: true});
+			} catch (error) {
+				sendResponse({success: false, error: error instanceof Error ? error.message : String(error)});
+			}
+			return true;
+		}
+
+		if (typedRequest.action === "copyMarkdownToClipboard" || typedRequest.action === "saveMarkdownToFile") {
+			if (sender.tab?.id) {
+				(async () => {
+					try {
+						await ensureContentScriptLoadedInBackground(sender.tab!.id!);
+						await browser.tabs.sendMessage(sender.tab!.id!, { action: typedRequest.action });
+						sendResponse({success: true});
+					} catch (error) {
+						sendResponse({success: false, error: error instanceof Error ? error.message : String(error)});
+					}
+				})();
+				return true;
+			}
+		}
+
 		if (typedRequest.action === "getTabInfo") {
 			browser.tabs.get(typedRequest.tabId as number).then((tab) => {
 				sendResponse({
@@ -634,25 +673,29 @@ browser.runtime.onMessage.addListener((request: unknown, sender: browser.Runtime
 });
 
 browser.commands.onCommand.addListener(async (command, tab) => {
-	if (command === 'quick_clip') {
-		browser.tabs.query({active: true, currentWindow: true}).then((tabs) => {
-			if (tabs[0]?.id) {
-				browser.action.openPopup();
-				setTimeout(() => {
-					browser.runtime.sendMessage({action: "triggerQuickClip"})
-						.catch(error => console.error("Failed to send quick clip message:", error));
-				}, 500);
-			}
-		});
+	// Some browsers (e.g. Orion) don't pass the tab parameter, so fall back to querying
+	if (!tab?.id) {
+		const tabs = await browser.tabs.query({active: true, currentWindow: true});
+		tab = tabs[0];
 	}
-	if (command === "toggle_highlighter" && tab && tab.id) {
+
+	if (command === 'quick_clip') {
+		if (tab?.id) {
+			browser.action.openPopup();
+			setTimeout(() => {
+				browser.runtime.sendMessage({action: "triggerQuickClip"})
+					.catch(error => console.error("Failed to send quick clip message:", error));
+			}, 500);
+		}
+	}
+	if (command === "toggle_highlighter" && tab?.id) {
 		await ensureContentScriptLoadedInBackground(tab.id);
 		toggleHighlighterMode(tab.id);
 	}
-	if (command === "copy_to_clipboard" && tab && tab.id) {
+	if (command === "copy_to_clipboard" && tab?.id) {
 		await browser.tabs.sendMessage(tab.id, { action: "copyToClipboard" });
 	}
-	if (command === "toggle_reader" && tab && tab.id) {
+	if (command === "toggle_reader" && tab?.id) {
 		await ensureContentScriptLoadedInBackground(tab.id);
 		await injectReaderScript(tab.id);
 		await browser.tabs.sendMessage(tab.id, { action: "toggleReaderMode" });
